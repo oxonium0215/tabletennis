@@ -73,3 +73,6 @@ crashlytics-build.properties
 
 # rider files
 .idea/
+
+# 自動生成したプロジェクトサマリー
+ProjectSummary.md
