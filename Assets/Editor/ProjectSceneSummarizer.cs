@@ -17,6 +17,10 @@ public class ProjectSceneSummarizer : EditorWindow
     private const int MaxRootObjects = 100; // 出力するルートオブジェクトの上限
     private const int MaxChildObjects = 7; // 各ルートオブジェクトの子オブジェクトの上限
     private static List<string> ignoreList = new();
+
+    // パターンプロファイルの管理
+    private readonly Dictionary<string, PatternProfile> patternProfiles = new();
+    private readonly List<string> profileNames = new();
     private List<string> excludePatterns = new();
     private string excludePatternsText = "";
     private List<string> includeExtensions = new();
@@ -28,11 +32,6 @@ public class ProjectSceneSummarizer : EditorWindow
     private int maxLinesPerFile = 1000;
     private string newProfileName = "";
     private string outputFileName = "ProjectSummary.md";
-
-    // パターンプロファイルの管理
-    private readonly Dictionary<string, PatternProfile> patternProfiles = new();
-    private int previousSelectedProfileIndex = -1;
-    private readonly List<string> profileNames = new();
     private Vector2 scrollPosition;
     private int selectedProfileIndex;
     private List<string> skipContentPatterns = new();
