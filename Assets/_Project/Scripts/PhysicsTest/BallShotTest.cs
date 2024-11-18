@@ -1,5 +1,7 @@
 using System;
 using StepUpTableTennis.TableTennisEngine;
+using StepUpTableTennis.TableTennisEngine.Core;
+using StepUpTableTennis.TableTennisEngine.Trajectory;
 using UnityEditor;
 using UnityEngine;
 

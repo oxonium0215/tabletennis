@@ -1,7 +1,8 @@
 using StepUpTableTennis.TableTennisEngine;
-using StepUpTableTennis.TableTennisEngine.Events;
+using StepUpTableTennis.TableTennisEngine.Collisions.Events;
+using StepUpTableTennis.TableTennisEngine.Core;
 using UnityEngine;
-using ForceMode = StepUpTableTennis.TableTennisEngine.ForceMode;
+using ForceMode = StepUpTableTennis.TableTennisEngine.Objects.ForceMode;
 
 namespace StepUpTableTennis.PhysicsTest
 {

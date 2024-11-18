@@ -1,3 +1,4 @@
+using StepUpTableTennis.TableTennisEngine.Objects;
 using UnityEngine;
 
 namespace StepUpTableTennis.TableTennisEngine.Visualization
