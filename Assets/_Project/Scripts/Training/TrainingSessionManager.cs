@@ -12,6 +12,7 @@ using StepUpTableTennis.TableTennisEngine.Core.Models;
 using StepUpTableTennis.TableTennisEngine.Trajectory;
 using StepUpTableTennis.TableTennisEngine.Visualization;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace StepUpTableTennis.Training
 {
@@ -39,6 +40,8 @@ namespace StepUpTableTennis.Training
         [Header("Recording Components")] [SerializeField]
         private Transform headTransform;
 
+        
+        public event System.Action<CollisionEventArgs> OnCollisionOccurred;
         private TrainingSession currentSession;
         private int currentShotIndex;
         private TrainingDataStorage dataStorage;
@@ -210,6 +213,7 @@ namespace StepUpTableTennis.Training
 
             // コリジョンイベントの登録
             physicsEngine.OnCollision += HandleCollision;
+            physicsEngine.OnCollision += args => OnCollisionOccurred?.Invoke(args);
         }
 
         private async Task<List<TrainingShot>> GenerateAndCalculateShots(SessionConfig config)
@@ -239,18 +243,20 @@ namespace StepUpTableTennis.Training
 
             // 難易度に応じた値を取得
             var speed = difficultySettings.GetSpeedForLevel();
-            var spin = difficultySettings.GetSpinForLevel();
+            var spinParams = difficultySettings.GetSpinForLevel();
             var courseVariation = difficultySettings.GetCourseVariationForLevel();
 
             // 目標位置を取得
             var targetPosition = ballLauncher.GetRandomTargetPosition();
-
+            // 発射地点は、BallLauncherの位置かそれより0.6右か左かをそれぞれ3分の1の確率で選択
+            var launchPosition = ballLauncher.transform.position +
+                                 (Random.value < 1f/3f ? Vector3.right * 0.6f : Random.value < 0.5f ? Vector3.left * 0.6f : Vector3.zero);
             return new ShotParameters(
-                ballLauncher.transform.position,
+                launchPosition,
                 targetPosition,
                 speed,
-                spin,
-                Vector3.up
+                spinParams.RotationsPerSecond,
+                spinParams.SpinAxis
             );
         }
 
@@ -267,6 +273,9 @@ namespace StepUpTableTennis.Training
                 Debug.LogError("Shot parameters have not been calculated");
                 return;
             }
+            //
+            // // 現在残っているボールを削除
+            // ballSpawner.DestroyAllBalls();
 
             // BallSpawnerを使用してボールを生成・発射
             ballSpawner.SpawnBall(

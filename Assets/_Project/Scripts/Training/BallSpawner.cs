@@ -48,5 +48,14 @@ namespace StepUpTableTennis.Training
             Debug.Log($"Ball spawned at {position} with velocity {velocity}");
             return ball;
         }
+        
+        public void DestroyAllBalls()
+        {
+            var visualizers = FindObjectsOfType<BallStateManager>();
+            foreach (var visualizer in visualizers)
+            {
+                Destroy(visualizer.gameObject);
+            }
+        }
     }
 }
