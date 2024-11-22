@@ -23,14 +23,14 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
 
         [SerializeField] private Vector2 energyDisplayOffset = new(10, 10);
         [SerializeField] private Color energyTextColor = Color.white;
+        private TableTennisPhysics _tableTennisPhysics;
         private GUIStyle energyDisplayStyle;
-        private PhysicsEngine physicsEngine;
 
         private void OnGUI()
         {
-            if (!showEnergyInfo || physicsEngine == null) return;
+            if (!showEnergyInfo || _tableTennisPhysics == null) return;
 
-            var ball = physicsEngine.GetFirstBall();
+            var ball = _tableTennisPhysics.GetFirstBall();
             if (ball == null) return;
 
             var kineticEnergy = ball.GetKineticEnergy();
@@ -56,7 +56,7 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
 
         private void OnDrawGizmos()
         {
-            if (physicsEngine == null) return;
+            if (_tableTennisPhysics == null) return;
 
             if (ShowColliders) DrawColliders();
             if (ShowTrajectory) DrawTrajectory();
@@ -64,9 +64,9 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
             if (ShowCollisions) DrawCollisions();
         }
 
-        public void Initialize(PhysicsEngine engine)
+        public void Initialize(TableTennisPhysics engine)
         {
-            physicsEngine = engine;
+            _tableTennisPhysics = engine;
             InitializeGUIStyle();
         }
 
@@ -85,24 +85,24 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
             Gizmos.color = ColliderColor;
 
             // パドルのコライダー描画
-            var paddle = physicsEngine.GetFirstPaddle();
+            var paddle = _tableTennisPhysics.GetFirstPaddle();
             if (paddle != null) DrawPaddleCollider(paddle);
 
             // テーブルのコライダー描画
-            var table = physicsEngine.GetFirstTable();
+            var table = _tableTennisPhysics.GetFirstTable();
             if (table != null) DrawTableCollider(table);
 
             // ボールのコライダー描画
-            var ball = physicsEngine.GetFirstBall();
-            if (ball != null) Gizmos.DrawWireSphere(ball.Position, physicsEngine.Settings.BallRadius);
+            var ball = _tableTennisPhysics.GetFirstBall();
+            if (ball != null) Gizmos.DrawWireSphere(ball.Position, _tableTennisPhysics.Settings.BallRadius);
         }
 
         private void DrawPaddleCollider(Paddle paddle)
         {
             var segments = 32;
-            var halfWidth = physicsEngine.Settings.PaddleSize.x * 0.5f;
-            var halfHeight = physicsEngine.Settings.PaddleSize.y * 0.5f;
-            var halfThickness = physicsEngine.Settings.PaddleThickness * 0.5f;
+            var halfWidth = _tableTennisPhysics.Settings.PaddleSize.x * 0.5f;
+            var halfHeight = _tableTennisPhysics.Settings.PaddleSize.y * 0.5f;
+            var halfThickness = _tableTennisPhysics.Settings.PaddleThickness * 0.5f;
 
             // 前面と背面の点を生成
             var frontPoints = new Vector3[segments + 1];
@@ -172,7 +172,7 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
             // エッジ部分の衝突判定範囲の可視化（オプション）
             if (ShowColliders)
             {
-                var ballRadius = physicsEngine.Settings.BallRadius;
+                var ballRadius = _tableTennisPhysics.Settings.BallRadius;
                 // 外側の衝突判定範囲
                 DrawPaddleOutline(paddle, halfWidth + ballRadius, halfHeight + ballRadius, halfThickness, segments,
                     new Color(ColliderColor.r, ColliderColor.g, ColliderColor.b, 0.2f));
@@ -206,17 +206,17 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
         private void DrawTableCollider(Table table)
         {
             // テーブルの境界ボックスを描画
-            var bounds = new Bounds(table.Position, physicsEngine.Settings.TableSize);
+            var bounds = new Bounds(table.Position, _tableTennisPhysics.Settings.TableSize);
             Gizmos.DrawWireCube(bounds.center, bounds.size);
         }
 
         private void DrawTrajectory()
         {
             // 現在は最初のボールの軌道のみを表示
-            var ball = physicsEngine.GetFirstBall();
+            var ball = _tableTennisPhysics.GetFirstBall();
             if (ball == null) return;
 
-            var positions = physicsEngine.PredictTrajectory(ball, TrajectoryDuration);
+            var positions = _tableTennisPhysics.PredictTrajectory(ball, TrajectoryDuration);
 
             Gizmos.color = TrajectoryColor;
             for (var i = 0; i < positions.Count - 1; i++) Gizmos.DrawLine(positions[i], positions[i + 1]);
@@ -224,7 +224,7 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
 
         private void DrawVelocities()
         {
-            var ball = physicsEngine.GetFirstBall();
+            var ball = _tableTennisPhysics.GetFirstBall();
             if (ball == null) return;
 
             Gizmos.color = VelocityColor;
@@ -238,7 +238,7 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
 
         private void DrawCollisions()
         {
-            foreach (var collision in physicsEngine.GetRecentCollisions()) DrawCollision(collision);
+            foreach (var collision in _tableTennisPhysics.GetRecentCollisions()) DrawCollision(collision);
         }
 
         private void DrawCollision(CollisionInfo collision)

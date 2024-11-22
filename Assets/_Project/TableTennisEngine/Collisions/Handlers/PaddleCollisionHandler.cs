@@ -1,5 +1,5 @@
 using StepUpTableTennis.TableTennisEngine.Collisions.System;
-using StepUpTableTennis.TableTennisEngine.Core;
+using StepUpTableTennis.TableTennisEngine.Core.Models;
 using StepUpTableTennis.TableTennisEngine.Objects;
 using StepUpTableTennis.TableTennisEngine.Objects.Base;
 using UnityEngine;

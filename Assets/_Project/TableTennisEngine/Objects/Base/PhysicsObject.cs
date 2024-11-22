@@ -1,4 +1,4 @@
-using StepUpTableTennis.TableTennisEngine.Core;
+using StepUpTableTennis.TableTennisEngine.Core.Models;
 using UnityEngine;
 
 namespace StepUpTableTennis.TableTennisEngine.Objects.Base

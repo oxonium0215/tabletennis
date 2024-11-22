@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using StepUpTableTennis.TableTennisEngine.Collisions.Handlers;
-using StepUpTableTennis.TableTennisEngine.Core;
+using StepUpTableTennis.TableTennisEngine.Core.Models;
 using StepUpTableTennis.TableTennisEngine.Objects;
 using StepUpTableTennis.TableTennisEngine.Objects.Base;
 

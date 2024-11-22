@@ -5,14 +5,12 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
 {
     public class BallVisualizer : MonoBehaviour
     {
-        [Header("Visualization")] [SerializeField]
-        private bool showTrails = true;
-
-        [SerializeField] private bool smoothMovement = true;
-        [SerializeField] private float smoothSpeed = 20f;
+        [SerializeField] private bool showTrails = true;
         [SerializeField] private bool showDebugInfo = true;
         private bool isInitialized;
         private Vector3 previousPosition;
+        private bool smoothMovement = true;
+        private float smoothSpeed = 20f;
         private Ball targetBall;
         private TrailRenderer trailRenderer;
 
@@ -31,13 +29,47 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
                 return;
             }
 
+            UpdateVisualization();
+        }
+
+        public void Initialize(Ball ball)
+        {
+            targetBall = ball;
+            if (ball != null)
+            {
+                UpdateTransform(ball.Position, ball.Rotation);
+                previousPosition = ball.Position;
+                isInitialized = true;
+            }
+        }
+
+        public void SetSmoothMovement(bool enabled, float speed = 20f)
+        {
+            smoothMovement = enabled;
+            smoothSpeed = speed;
+        }
+
+        public void SetTrailEnabled(bool enabled)
+        {
+            showTrails = enabled;
+            if (trailRenderer)
+                trailRenderer.enabled = enabled;
+        }
+
+        public void SetDebugEnabled(bool enabled)
+        {
+            showDebugInfo = enabled;
+        }
+
+        private void UpdateVisualization()
+        {
             if (showDebugInfo)
-                Debug.Log(
-                    $"Ball Physics State - Position: {targetBall.Position}, Velocity: {targetBall.Velocity}, Current Transform Position: {transform.position}");
+                Debug.Log($"Ball Physics State - Position: {targetBall.Position}, " +
+                          $"Velocity: {targetBall.Velocity}, " +
+                          $"Current Transform Position: {transform.position}");
 
             if (smoothMovement)
             {
-                // 補間を使用してスムーズに移動
                 transform.position = Vector3.Lerp(
                     transform.position,
                     targetBall.Position,
@@ -52,45 +84,23 @@ namespace StepUpTableTennis.TableTennisEngine.Visualization
             }
             else
             {
-                // 直接位置と回転を更新
-                UpdatePosition(targetBall.Position);
-                UpdateRotation(targetBall.Rotation);
+                UpdateTransform(targetBall.Position, targetBall.Rotation);
             }
 
-            // 急激な位置の変化を検出してトレイルをリセット
-            if (showTrails && trailRenderer && Vector3.Distance(previousPosition, targetBall.Position) > 1f)
-                trailRenderer.Clear();
-
-            previousPosition = targetBall.Position;
+            CheckAndUpdateTrail();
         }
 
-        public void Initialize(Ball ball)
-        {
-            targetBall = ball;
-            if (ball != null)
-            {
-                UpdatePosition(ball.Position);
-                UpdateRotation(ball.Rotation);
-                previousPosition = ball.Position;
-                isInitialized = true;
-            }
-        }
-
-        private void UpdatePosition(Vector3 position)
+        private void UpdateTransform(Vector3 position, Quaternion rotation)
         {
             transform.position = position;
-        }
-
-        private void UpdateRotation(Quaternion rotation)
-        {
             transform.rotation = rotation;
         }
 
-        public void SetTrailEnabled(bool enabled)
+        private void CheckAndUpdateTrail()
         {
-            showTrails = enabled;
-            if (trailRenderer)
-                trailRenderer.enabled = enabled;
+            if (showTrails && trailRenderer && Vector3.Distance(previousPosition, targetBall.Position) > 1f)
+                trailRenderer.Clear();
+            previousPosition = targetBall.Position;
         }
     }
 }
