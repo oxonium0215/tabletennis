@@ -83,8 +83,8 @@ namespace StepUpTableTennis.DataManagement.Core.Models
 
         public Vector3 Position { get; }
         public Quaternion Rotation { get; }
-        public Vector3 Velocity { get; }
-        public Vector3 AngularVelocity { get; }
+        public Vector3 Velocity { get; set; }
+        public Vector3 AngularVelocity { get; set; }
     }
 
     public class GazeRecordData : RecordData

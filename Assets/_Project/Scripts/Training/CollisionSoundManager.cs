@@ -60,7 +60,7 @@ namespace StepUpTableTennis.Training
                     {
                         PlaySound(paddleAudioSource, paddleHitSound, args.CollisionInfo.Point, paddleHitVolume);
                         // ボールを消す(下方向に吹き飛ばす)
-                        args.CollisionInfo.Ball.AddForce(Vector3.down * 1000f);
+                        // args.CollisionInfo.Ball.AddForce(Vector3.down * 1000f);
                     }
                     break;
 

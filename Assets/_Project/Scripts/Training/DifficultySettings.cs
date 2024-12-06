@@ -41,13 +41,13 @@ namespace StepUpTableTennis.Training
             var baseSpeed = SpeedLevel switch
             {
                 1 => Random.Range(18f, 18f),
-                2 => Random.Range(20f, 20f),
-                3 => Random.Range(22f, 22f),
-                4 => Random.Range(24f, 24f),
-                5 => Random.Range(26f, 26f),
-                6 => Random.Range(28f, 28f),
-                7 => Random.Range(40f, 40f),
-                _ => 20f
+                2 => Random.Range(21f, 21f),
+                3 => Random.Range(24f, 24f),
+                4 => Random.Range(27f, 27f),
+                5 => Random.Range(30f, 30f),
+                6 => Random.Range(33f, 33f),
+                7 => Random.Range(36f, 36f),
+                _ => 21f
             };
 
             // km/h から m/s に変換
@@ -69,7 +69,7 @@ namespace StepUpTableTennis.Training
                     break;
 
                 case 2: // 初中級
-                    float rand2 = Random.value;
+                    var rand2 = Random.value;
                     if (rand2 < 0.3f) spinType = SpinType.NoSpin;
                     else if (rand2 < 0.7f) spinType = SpinType.TopSpin;
                     else spinType = SpinType.BackSpin;
@@ -83,7 +83,7 @@ namespace StepUpTableTennis.Training
                     break;
 
                 case 3: // 中級
-                    float rand3 = Random.value;
+                    var rand3 = Random.value;
                     if (rand3 < 0.2f) spinType = SpinType.NoSpin;
                     else if (rand3 < 0.5f) spinType = SpinType.TopSpin;
                     else if (rand3 < 0.8f) spinType = SpinType.BackSpin;
@@ -99,24 +99,21 @@ namespace StepUpTableTennis.Training
                     break;
 
                 case 4: // 上級
-                    float rand4 = Random.value;
+                    var rand4 = Random.value;
                     if (rand4 < 0.1f) spinType = SpinType.NoSpin;
                     else if (rand4 < 0.35f) spinType = SpinType.TopSpin;
                     else if (rand4 < 0.6f) spinType = SpinType.BackSpin;
                     else if (rand4 < 0.8f) spinType = SpinType.SideSpin;
                     else spinType = SpinType.ComplexSpin;
                     rps = Random.Range(25f, 45f);
-                    
+
                     if (spinType == SpinType.ComplexSpin)
-                    {
                         axis = new Vector3(
                             Random.Range(-1f, 1f),
                             0,
                             Random.Range(-1f, 1f)
                         ).normalized;
-                    }
                     else
-                    {
                         axis = spinType switch
                         {
                             SpinType.TopSpin => Vector3.right,
@@ -124,28 +121,24 @@ namespace StepUpTableTennis.Training
                             SpinType.SideSpin => Vector3.forward,
                             _ => Vector3.zero
                         };
-                    }
                     break;
 
                 case 5: // 最上級
-                    float rand5 = Random.value;
+                    var rand5 = Random.value;
                     if (rand5 < 0.05f) spinType = SpinType.NoSpin;
                     else if (rand5 < 0.3f) spinType = SpinType.TopSpin;
                     else if (rand5 < 0.55f) spinType = SpinType.BackSpin;
                     else if (rand5 < 0.75f) spinType = SpinType.SideSpin;
                     else spinType = SpinType.ComplexSpin;
                     rps = Random.Range(35f, 60f);
-                    
+
                     if (spinType == SpinType.ComplexSpin)
-                    {
                         axis = new Vector3(
                             Random.Range(-1f, 1f),
                             0,
                             Random.Range(-1f, 1f)
                         ).normalized;
-                    }
                     else
-                    {
                         axis = spinType switch
                         {
                             SpinType.TopSpin => Vector3.right,
@@ -153,7 +146,6 @@ namespace StepUpTableTennis.Training
                             SpinType.SideSpin => Vector3.forward,
                             _ => Vector3.zero
                         };
-                    }
                     break;
 
                 default:

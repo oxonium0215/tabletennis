@@ -19,8 +19,8 @@ namespace StepUpTableTennis.DataManagement.Recording
 
     public class MotionRecorder : IMotionRecorder
     {
+        private readonly PaddleStateHandler _paddleStateHandler;
         private readonly Transform headTransform;
-        private readonly PaddleSetup paddleSetup;
         private readonly float recordingInterval = 1f / 60f; // 60Hz でサンプリング
         private BallStateManager currentBallStateManager;
         private int currentShotIndex = -1;
@@ -28,10 +28,10 @@ namespace StepUpTableTennis.DataManagement.Recording
         private IReadOnlyList<TrainingShot> sessionShots;
 
         public MotionRecorder(
-            PaddleSetup paddleSetup,
+            PaddleStateHandler paddleStateHandler,
             Transform headTransform)
         {
-            this.paddleSetup = paddleSetup;
+            _paddleStateHandler = paddleStateHandler;
             this.headTransform = headTransform;
         }
 
@@ -102,9 +102,9 @@ namespace StepUpTableTennis.DataManagement.Recording
             }
 
             // ラケットの状態を記録
-            if (paddleSetup != null && paddleSetup.Paddle != null)
+            if (_paddleStateHandler != null && _paddleStateHandler.Paddle != null)
             {
-                var paddleState = paddleSetup.Paddle;
+                var paddleState = _paddleStateHandler.Paddle;
                 racketMotion = new MotionRecordData(
                     timestamp,
                     timeOffset,

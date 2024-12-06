@@ -22,11 +22,13 @@ namespace StepUpTableTennis.DataManagement.Storage
             jsonOptions = new JsonSerializerOptions
             {
                 WriteIndented = true,
+                NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
                 Converters =
                 {
                     new Vector2JsonConverter(),
                     new Vector3JsonConverter(),
-                    new QuaternionJsonConverter()
+                    new QuaternionJsonConverter(),
+                    new FloatJsonConverter() // 新しいコンバーター
                 }
             };
 
@@ -99,8 +101,23 @@ namespace StepUpTableTennis.DataManagement.Storage
             return session;
         }
 
+        private void SanitizeMotionData(MotionRecordData data)
+        {
+            // 無限大や非数値をチェックして置き換える
+            if (float.IsInfinity(data.Velocity.x) || float.IsNaN(data.Velocity.x))
+                data.Velocity = Vector3.zero;
+            if (float.IsInfinity(data.AngularVelocity.x) || float.IsNaN(data.AngularVelocity.x))
+                data.AngularVelocity = Vector3.zero;
+        }
+
         private async Task SaveShotAsync(string path, TrainingShot shot)
         {
+            // データのサニタイズ
+            foreach (var motionData in shot.BallMotionData)
+                SanitizeMotionData(motionData);
+            foreach (var motionData in shot.RacketMotionData)
+                SanitizeMotionData(motionData);
+
             var storedShot = new StoredShot
             {
                 Parameters = shot.Parameters,
@@ -228,6 +245,30 @@ namespace StepUpTableTennis.DataManagement.Storage
             writer.WriteNumber("z", value.z);
             writer.WriteNumber("w", value.w);
             writer.WriteEndObject();
+        }
+    }
+
+    public class FloatJsonConverter : JsonConverter<float>
+    {
+        public override float Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var value = reader.GetString();
+                if (value == "Infinity") return float.PositiveInfinity;
+                if (value == "-Infinity") return float.NegativeInfinity;
+                if (value == "NaN") return float.NaN;
+            }
+
+            return reader.GetSingle();
+        }
+
+        public override void Write(Utf8JsonWriter writer, float value, JsonSerializerOptions options)
+        {
+            if (float.IsInfinity(value) || float.IsNaN(value))
+                writer.WriteNumberValue(0f); // 無効な値を0に置き換え
+            else
+                writer.WriteNumberValue(value);
         }
     }
 }
