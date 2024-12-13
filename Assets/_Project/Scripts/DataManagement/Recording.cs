@@ -19,7 +19,7 @@ namespace StepUpTableTennis.DataManagement.Recording
 
     public class MotionRecorder : IMotionRecorder
     {
-        private readonly PaddleStateHandler _paddleStateHandler;
+        private readonly PaddleSetup _paddleStateHandler;
         private readonly Transform headTransform;
         private readonly float recordingInterval = 1f / 60f; // 60Hz でサンプリング
         private BallStateManager currentBallStateManager;
@@ -28,7 +28,7 @@ namespace StepUpTableTennis.DataManagement.Recording
         private IReadOnlyList<TrainingShot> sessionShots;
 
         public MotionRecorder(
-            PaddleStateHandler paddleStateHandler,
+            PaddleSetup paddleStateHandler,
             Transform headTransform)
         {
             _paddleStateHandler = paddleStateHandler;

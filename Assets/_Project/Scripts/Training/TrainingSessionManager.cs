@@ -35,7 +35,7 @@ namespace StepUpTableTennis.Training
         [Header("Physics Objects")] [SerializeField]
         private TableSetup tableSetup;
 
-        [SerializeField] private PaddleStateHandler paddleStateHandler;
+        [SerializeField] private PaddleSetup paddleStateHandler;
         [Header("Session Settings")] public DifficultySettings difficultySettings = new();
         [SerializeField] private bool autoStart;
         [Header("Session Settings")] public int shotsPerSession = 10;
@@ -63,8 +63,6 @@ namespace StepUpTableTennis.Training
         private int totalExecutedShots;
         public event Action<CollisionEventArgs> OnCollisionOccurred;
 
-        #region Unity Lifecycle
-
         private void Start()
         {
             InitializeComponents();
@@ -75,16 +73,10 @@ namespace StepUpTableTennis.Training
         {
             if (!isSessionActive) return;
 
-            // 物理シミュレーションの更新
             physicsEngine.Simulate(Time.deltaTime);
-
-            // モーションデータの記録を更新
             motionRecorder.UpdateRecording();
 
-            // 次のショットの発射チェック
             if (Time.time >= nextShotTime && currentShotIndex < currentSession.Shots.Count) ExecuteNextShot();
-
-            // セッション終了条件のチェック
             CheckSessionCompletion();
         }
 
@@ -92,10 +84,6 @@ namespace StepUpTableTennis.Training
         {
             ValidateComponents();
         }
-
-        #endregion
-
-        #region Session Management
 
         public async Task<bool> PrepareNewSession()
         {
@@ -118,7 +106,6 @@ namespace StepUpTableTennis.Training
                     shotInterval
                 );
 
-                // 各ショットのパラメータを生成
                 var shots = await GenerateAndCalculateShots(config);
 
                 currentSession = new TrainingSession(
@@ -128,7 +115,6 @@ namespace StepUpTableTennis.Training
                     shots
                 );
 
-                // セッション開始時にモーション記録を開始
                 motionRecorder.StartSession(currentSession.Shots);
 
                 currentShotIndex = 0;
@@ -147,18 +133,14 @@ namespace StepUpTableTennis.Training
 
         public async void StartNewSession()
         {
-            // セッションがアクティブな場合は強制終了
             if (isSessionActive)
             {
                 StopSession();
-                // 少し待ってから新しいセッションを開始
                 await Task.Delay(100);
             }
 
-            // 状態のリセット
             ResetSessionState();
 
-            // 新しいセッションの準備
             if (!await PrepareNewSession())
                 return;
 
@@ -168,14 +150,12 @@ namespace StepUpTableTennis.Training
 
             Debug.Log($"Started new session: {currentSession.Id.Value}");
 
-            // セッション開始イベントを発火
             onSessionStart?.Invoke();
         }
 
         public void StopSession()
         {
             if (!isSessionActive) return;
-
             CompleteSession();
             isSessionActive = false;
         }
@@ -184,8 +164,6 @@ namespace StepUpTableTennis.Training
         {
             if (!isSessionActive) return;
             isSessionActive = false;
-
-            // セッション一時停止イベントを発火
             onSessionPause?.Invoke();
         }
 
@@ -194,48 +172,34 @@ namespace StepUpTableTennis.Training
             if (isSessionActive || currentSession == null) return;
             isSessionActive = true;
             nextShotTime = Time.time;
-
-            // セッション再開イベントを発火
             onSessionResume?.Invoke();
         }
 
-        #endregion
-
-        #region Private Methods
-
         private void InitializeComponents()
         {
-            // 物理エンジンの初期化
             physicsEngine = new TableTennisPhysics(physicsSettings);
 
-            // テーブルの登録
             if (tableSetup != null && tableSetup.Table != null)
                 physicsEngine.AddTable(tableSetup.Table);
 
-            // パドルの登録
             if (paddleStateHandler != null && paddleStateHandler.Paddle != null)
                 physicsEngine.AddPaddle(paddleStateHandler.Paddle);
 
-            // モーション記録機能の初期化
             motionRecorder = new MotionRecorder(
                 paddleStateHandler,
                 headTransform ?? Camera.main?.transform
             );
 
-            // ボールスポナーの初期化
             if (ballSpawner != null)
                 ballSpawner.Initialize(physicsEngine, motionRecorder);
 
-            // 物理デバッガーの初期化
             if (physicsDebugger != null)
                 physicsDebugger.Initialize(physicsEngine);
 
-            // データストレージの初期化
             dataStorage = new TrainingDataStorage(
                 Path.Combine(Application.persistentDataPath, "TrainingData")
             );
 
-            // コリジョンイベントの登録
             physicsEngine.OnCollision += HandleCollision;
             physicsEngine.OnCollision += args => OnCollisionOccurred?.Invoke(args);
         }
@@ -247,13 +211,8 @@ namespace StepUpTableTennis.Training
 
             for (var i = 0; i < config.TotalShots; i++)
             {
-                // 難易度に基づいてショットパラメータを生成
                 var parameters = GenerateShotParameters(config.Difficulty);
-
-                // 軌道を計算
                 var calculatedParams = await calculator.CalculateTrajectoryAsync(parameters);
-
-                // TrainingShotを作成
                 var shot = new TrainingShot(calculatedParams);
                 shots.Add(shot);
             }
@@ -265,17 +224,30 @@ namespace StepUpTableTennis.Training
         {
             if (ballLauncher == null) throw new InvalidOperationException("BallLauncher reference not set!");
 
-            // 難易度に応じた値を取得
             var speed = difficultySettings.GetSpeedForLevel();
             var spinParams = difficultySettings.GetSpinForLevel();
             var courseVariation = difficultySettings.GetCourseVariationForLevel();
 
-            // 目標位置を取得
-            var targetPosition = ballLauncher.GetRandomTargetPosition();
-            // 発射地点は、BallLauncherの位置かそれより0.6右か左かをそれぞれ3分の1の確率で選択
-            var launchPosition = ballLauncher.transform.position +
-                                 (Random.value < 1f / 3f ? Vector3.right * 0.6f :
-                                     Random.value < 0.5f ? Vector3.left * 0.6f : Vector3.zero);
+            // ADD: コース選択
+            // 発射オフセット決定
+            Vector3 launchBase = ballLauncher.transform.position;
+            Vector3 launchOffset = difficultySettings.GetLaunchOffset();
+            Vector3 launchPosition = launchBase + launchOffset;
+
+            // テーブル情報からバウンドコース決定
+            // テーブル中心・方向・サイズを取得
+            var table = tableSetup.Table;
+            // テーブルのx方向幅: table.Size.x, z方向: table.Size.zであることを想定
+            // ここでBounceTarget取得にあたり、UI側で使った(tableWidth, tableDepth)と合せるため
+            // テーブルは (Length方向: x, Width方向: z) なのかによって変わるが、ここでは
+            // table.Size.xを幅、table.Size.zを奥行きとして使用するとする。
+            Vector2 tableSize = new Vector2(table.Size.x, table.Size.z);
+            // テーブルのforwardはtransformから取得できないので、ここではワールド空間でZ方向をforwardとする仮定
+            // もし特定の向きがあるならtableのRotationからforward/rightを算出:
+            Vector3 tableForward = table.Rotation * Vector3.left;
+            Vector3 tableRight = table.Rotation * Vector3.forward;
+            Vector3 targetPosition = difficultySettings.GetBounceTargetPosition(table.Position, tableForward, tableRight, tableSize);
+
             return new ShotParameters(
                 launchPosition,
                 targetPosition,
@@ -298,21 +270,14 @@ namespace StepUpTableTennis.Training
                 Debug.LogError("Shot parameters have not been calculated");
                 return;
             }
-            //
-            // // 現在残っているボールを削除
-            // ballSpawner.DestroyAllBalls();
 
-            // BallSpawnerを使用してボールを生成・発射
             ballSpawner.SpawnBall(
                 parameters.LaunchPosition,
                 parameters.InitialVelocity.Value,
                 parameters.InitialAngularVelocity.Value
             );
 
-            // 発射時刻を記録
             shot.RecordExecution(DateTime.Now, false);
-
-            // 現在のショットインデックスを記録システムに通知
             motionRecorder.SetCurrentShot(currentShotIndex);
 
             currentShotIndex++;
@@ -322,7 +287,6 @@ namespace StepUpTableTennis.Training
 
         private void CheckSessionCompletion()
         {
-            // 最後のショットの発射と物理シミュレーションの余裕を持たせる
             if (currentShotIndex >= currentSession.Shots.Count && Time.time > nextShotTime + 1.0f)
             {
                 Debug.Log($"Session completed. Total shots: {totalExecutedShots}, Successful: {successfulShots}");
@@ -349,11 +313,8 @@ namespace StepUpTableTennis.Training
                 await dataStorage.SaveSessionAsync(currentSession);
                 Debug.Log($"Session data saved successfully: {currentSession.Id.Value}");
 
-                // 統計情報イベントを発火
                 var successRate = totalExecutedShots > 0 ? (float)successfulShots / totalExecutedShots * 100f : 0f;
                 onSessionStatistics?.Invoke(successfulShots, totalExecutedShots, successRate);
-
-                // 完了イベントを発火
                 onSessionComplete?.Invoke();
             }
             catch (Exception e)
@@ -361,11 +322,9 @@ namespace StepUpTableTennis.Training
                 Debug.LogError($"Failed to save session data: {e.Message}");
             }
 
-            // クリーンアップ処理
             ResetSessionState();
         }
 
-        // セッション統計情報を取得するパブリックメソッド
         public (int successfulShots, int totalShots, float successRate) GetCurrentStatistics()
         {
             var successRate = totalExecutedShots > 0 ? (float)successfulShots / totalExecutedShots * 100f : 0f;
@@ -374,27 +333,14 @@ namespace StepUpTableTennis.Training
 
         private void ResetSessionState()
         {
-            // ボールの削除
             if (ballSpawner != null) ballSpawner.DestroyAllBalls();
 
-            // セッション関連の変数をリセット
             currentSession = null;
             currentShotIndex = 0;
             successfulShots = 0;
             totalExecutedShots = 0;
             isSessionActive = false;
             nextShotTime = 0;
-
-            // 物理エンジンは再作成せず、既存のものを維持
-            // 代わりにボールの状態のみクリア
-            if (physicsEngine != null)
-            {
-                var balls = physicsEngine.GetBallStates().ToList();
-                foreach (var ball in balls)
-                {
-                    // ボールのクリーンアップ処理
-                }
-            }
         }
 
         private void HandleCollision(CollisionEventArgs args)
@@ -407,7 +353,6 @@ namespace StepUpTableTennis.Training
                 shot.WasSuccessful = true;
                 successfulShots++;
 
-                // ボールを消す機能を設定に応じて実行
                 if (removeBalLAfterPaddleHit && args.CollisionInfo.Ball != null)
                     args.CollisionInfo.Ball.AddForce(Vector3.down * ballRemovalForce);
             }
@@ -431,9 +376,7 @@ namespace StepUpTableTennis.Training
                 tableSetup = FindObjectOfType<TableSetup>();
 
             if (paddleStateHandler == null)
-                paddleStateHandler = FindObjectOfType<PaddleStateHandler>();
+                paddleStateHandler = FindObjectOfType<PaddleSetup>();
         }
-
-        #endregion
     }
 }

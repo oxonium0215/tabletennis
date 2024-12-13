@@ -32,12 +32,8 @@ namespace StepUpTableTennis.TableTennisEngine.Collisions.Handlers
             var ball = info.Ball;
             if (ball == null) return;
 
-            // 位置の修正
-            ball.ResetState(
-                ball.Position + info.Normal * info.Depth,
-                ball.Velocity,
-                ball.Spin
-            );
+            // 位置の修正: ResetStateではなくPositionを直接修正
+            ball.Position += info.Normal * info.Depth;
 
             var mass = settings.BallMass;
             var radius = settings.BallRadius;
@@ -51,22 +47,29 @@ namespace StepUpTableTennis.TableTennisEngine.Collisions.Handlers
             var v = ball.Velocity;
             var w = ball.Spin;
 
-            // 接触点での相対速度
-            var r = -radius * normal; // 中心から接触点までのベクトル
+            // 接触点での相対速度を求める
+            var r = -radius * normal; // ボール中心から接触点までのベクトル
             var v_contact = v + Vector3.Cross(w, r);
 
-            // 法線方向と接線方向の成分
-            var v_contact_n = Vector3.Dot(v_contact, normal) * normal;
-            var v_contact_t = v_contact - v_contact_n;
+            // 法線方向と接線方向の成分を分解
+            var v_contact_n = Vector3.Dot(v_contact, normal);
+            var v_contact_t = v_contact - v_contact_n * normal;
+
+            // ボールが既に衝突面から離れる方向に動いている場合は反発インパルス不要
+            if (v_contact_n >= 0f)
+            {
+                // 離れる方向なら特に反発は与えず終了
+                return;
+            }
 
             // 法線方向の力積
-            var normalImpulseMagnitude = -(1 + restitution) * Vector3.Dot(v_contact, normal) * mass;
+            var normalImpulseMagnitude = -(1 + restitution) * v_contact_n * mass;
             ball.AddForce(normalImpulseMagnitude * normal, ForceMode.Impulse);
 
             // 最大摩擦力積
             var maxFrictionImpulse = frictionCoefficient * Mathf.Abs(normalImpulseMagnitude);
 
-            // 目標とする摩擦力積
+            // 接線方向の目標摩擦力積
             var desiredFrictionImpulse = -mass * v_contact_t;
             var frictionImpulse = desiredFrictionImpulse.magnitude > maxFrictionImpulse
                 ? desiredFrictionImpulse.normalized * maxFrictionImpulse
@@ -75,7 +78,7 @@ namespace StepUpTableTennis.TableTennisEngine.Collisions.Handlers
             // 摩擦力積の適用
             ball.AddForce(frictionImpulse, ForceMode.Impulse);
 
-            // 角運動量の変化を適用
+            // 角運動量の変化(トルク)適用
             var deltaAngularMomentum = Vector3.Cross(r, frictionImpulse);
             ball.AddTorque(deltaAngularMomentum, ForceMode.Impulse);
         }

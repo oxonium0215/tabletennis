@@ -6718,6 +6718,23 @@ MonoBehaviour:
     SpeedLevel: 1
     SpinLevel: 1
     CourseLevel: 1
+    CourseSettings:
+      LaunchEnabled: 000100
+      LaunchWeights:
+      - 50
+      - 50
+      - 50
+      BounceEnabled: 000100000000000000
+      BounceWeights:
+      - 50
+      - 50
+      - 50
+      - 50
+      - 50
+      - 50
+      - 50
+      - 50
+      - 50
   autoStart: 0
   shotsPerSession: 30
   shotInterval: 1
@@ -6856,15 +6873,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d69fe9bbce234ab7af48af95b8c1655c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  paddleVisual: {fileID: 896612506}
-  paddleState: {fileID: 2017439799}
+  racketVisual: {fileID: 896612506}
+  paddleSetup: {fileID: 2017439799}
   controllerType: 2
   positionOffset: {x: 0.01, y: -0.07, z: -0.09}
-  rotationOffset: {x: 319, y: 223.1, z: -31.6}
-  colliderPositionOffset: {x: 0.014, y: 0.04, z: 0.04}
-  colliderRotationOffset: {x: 319, y: 223.1, z: -31.6}
-  velocitySmoothing: 0.5
-  showDebugGizmos: 0
+  rotationOffset: {x: 358.9, y: 261.3, z: -58.4}
 --- !u!114 &358347853
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10320,6 +10333,10 @@ PrefabInstance:
       propertyPath: _ovrCameraRig
       value: 
       objectReference: {fileID: 658276512}
+    - target: {fileID: 2460606652970198177, guid: 314f6e1da20902f4ba50509fa6eb8fa8, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8424482620031334501, guid: 314f6e1da20902f4ba50509fa6eb8fa8, type: 3}
       propertyPath: _playerOrigin
       value: 
@@ -14638,7 +14655,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &782375529
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20844,7 +20861,7 @@ SkinnedMeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1165893766}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -30571,7 +30588,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 431051904}
   m_Direction: 0
   m_MinValue: 0
-  m_MaxValue: 10
+  m_MaxValue: 2
   m_WholeNumbers: 0
   m_Value: 0.02
   m_OnValueChanged:

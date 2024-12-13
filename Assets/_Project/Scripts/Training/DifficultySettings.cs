@@ -35,9 +35,11 @@ namespace StepUpTableTennis.Training
         [Range(1, 5)] public int SpinLevel = 1;
         [Range(1, 5)] public int CourseLevel = 1;
 
+        // ADD: コース設定インスタンスを追加
+        public CourseSettings CourseSettings = new CourseSettings();
+
         public float GetSpeedForLevel()
         {
-            // スピードレベルに応じた値を返す（m/s）
             var baseSpeed = SpeedLevel switch
             {
                 1 => Random.Range(18f, 18f),
@@ -50,7 +52,6 @@ namespace StepUpTableTennis.Training
                 _ => 21f
             };
 
-            // km/h から m/s に変換
             return baseSpeed / 3.6f;
         }
 
@@ -62,13 +63,12 @@ namespace StepUpTableTennis.Training
 
             switch (SpinLevel)
             {
-                case 1: // 初級
+                case 1:
                     spinType = SpinType.TopSpin;
                     rps = Random.Range(0f, 10f);
                     axis = Vector3.right;
                     break;
-
-                case 2: // 初中級
+                case 2:
                     var rand2 = Random.value;
                     if (rand2 < 0.3f) spinType = SpinType.NoSpin;
                     else if (rand2 < 0.7f) spinType = SpinType.TopSpin;
@@ -81,8 +81,7 @@ namespace StepUpTableTennis.Training
                         _ => Vector3.zero
                     };
                     break;
-
-                case 3: // 中級
+                case 3:
                     var rand3 = Random.value;
                     if (rand3 < 0.2f) spinType = SpinType.NoSpin;
                     else if (rand3 < 0.5f) spinType = SpinType.TopSpin;
@@ -97,8 +96,7 @@ namespace StepUpTableTennis.Training
                         _ => Vector3.zero
                     };
                     break;
-
-                case 4: // 上級
+                case 4:
                     var rand4 = Random.value;
                     if (rand4 < 0.1f) spinType = SpinType.NoSpin;
                     else if (rand4 < 0.35f) spinType = SpinType.TopSpin;
@@ -122,8 +120,7 @@ namespace StepUpTableTennis.Training
                             _ => Vector3.zero
                         };
                     break;
-
-                case 5: // 最上級
+                case 5:
                     var rand5 = Random.value;
                     if (rand5 < 0.05f) spinType = SpinType.NoSpin;
                     else if (rand5 < 0.3f) spinType = SpinType.TopSpin;
@@ -147,7 +144,6 @@ namespace StepUpTableTennis.Training
                             _ => Vector3.zero
                         };
                     break;
-
                 default:
                     return new SpinParameters(SpinType.NoSpin, 0f, Vector3.zero);
             }
@@ -157,16 +153,30 @@ namespace StepUpTableTennis.Training
 
         public Vector2 GetCourseVariationForLevel()
         {
-            // コースレベルに応じたばらつきの範囲を返す（メートル）
             return CourseLevel switch
             {
-                1 => new Vector2(0.1f, 0.1f), // 小さなばらつき
-                2 => new Vector2(0.2f, 0.2f), // やや小さなばらつき
-                3 => new Vector2(0.3f, 0.3f), // 中程度のばらつき
-                4 => new Vector2(0.4f, 0.4f), // やや大きなばらつき
-                5 => new Vector2(0.5f, 0.5f), // 大きなばらつき
+                1 => new Vector2(0.1f, 0.1f),
+                2 => new Vector2(0.2f, 0.2f),
+                3 => new Vector2(0.3f, 0.3f),
+                4 => new Vector2(0.4f, 0.4f),
+                5 => new Vector2(0.5f, 0.5f),
                 _ => new Vector2(0.1f, 0.1f)
             };
+        }
+
+        // ADD: ランチ位置オフセット取得
+        public Vector3 GetLaunchOffset()
+        {
+            return CourseSettings.GetLaunchOffset();
+        }
+
+        // ADD: バウンドコースから1点を取得
+        // tableCenter: テーブル中心位置
+        // tableForward, tableRight: テーブルの向きベクトル
+        // tableSize: (width, depth)
+        public Vector3 GetBounceTargetPosition(Vector3 tableCenter, Vector3 tableForward, Vector3 tableRight, Vector2 tableSize)
+        {
+            return CourseSettings.GetBounceTargetPosition(tableCenter, tableForward, tableRight, tableSize);
         }
     }
 }
