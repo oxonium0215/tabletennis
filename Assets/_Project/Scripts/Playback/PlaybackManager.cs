@@ -52,50 +52,24 @@ namespace StepUpTableTennis.Playback
             currentTime = 0f;
             shotDuration = GetShotDuration(shot);
 
-            // ビジュアライザーの初期化を確実に行う
-            if (visualizer != null)
-            {
-                visualizer.Show();
-                visualizer.ClearTrail();
-
-                // 初期状態を明示的に設定
-                if (shot.BallMotionData.Count > 0)
-                {
-                    var initialBallData = shot.BallMotionData[0];
-                    visualizer.UpdateBallTransform(initialBallData.Position, initialBallData.Rotation);
-                }
-            }
-            else
-            {
-                Debug.LogError("Visualizer is not assigned in PlaybackManager");
-            }
+            // ビジュアライザーとUIを初期化
+            visualizer.Show();
+            visualizer.ClearTrail();
+            UpdateVisuals(0f);
 
             // タイムライン範囲を更新
-            if (uiController != null) uiController.UpdateTimelineRange(0f, shotDuration);
+            uiController.UpdateTimelineRange(0f, shotDuration);
         }
 
         private float GetShotDuration(TrainingShot shot)
         {
-            if (shot.BallMotionData.Count == 0 && shot.RacketMotionData.Count == 0)
-                return 0f;
+            var lastBallData = shot.BallMotionData.LastOrDefault();
+            var lastRacketData = shot.RacketMotionData.LastOrDefault();
 
-            var totalDuration = 0f;
+            var ballDuration = lastBallData?.TimeOffset ?? 0f;
+            var racketDuration = lastRacketData?.TimeOffset ?? 0f;
 
-            // ボールの動きの合計時間を計算
-            if (shot.BallMotionData.Count > 0)
-                // TimeOffsetを累積して合計時間を計算
-                totalDuration = shot.BallMotionData.Sum(data => data.TimeOffset);
-
-            // ラケットの動きの合計時間を計算
-            if (shot.RacketMotionData.Count > 0)
-            {
-                var racketDuration = shot.RacketMotionData.Sum(data => data.TimeOffset);
-                totalDuration = Mathf.Max(totalDuration, racketDuration);
-            }
-
-            Debug.Log(
-                $"Calculated shot duration: {totalDuration} seconds from {shot.BallMotionData.Count} ball records");
-            return totalDuration;
+            return Mathf.Max(ballDuration, racketDuration);
         }
 
         private void UpdateVisuals(float time)
@@ -110,24 +84,12 @@ namespace StepUpTableTennis.Playback
                     visualizer.UpdateBallTransform(ballData.Position, ballData.Rotation);
                 }
 
-                // パドルの更新
+                // ラケットの更新
                 if (currentShot.RacketMotionData.Count > 0)
                 {
                     var racketData = MotionDataInterpolator.InterpolateMotionData(
                         currentShot.RacketMotionData, time);
-
-                    // パドルの位置と回転を更新
-                    visualizer.UpdateRacketTransform(
-                        racketData.Position,
-                        racketData.Rotation
-                    );
-
-                    // デバッグログを追加
-                    Debug.Log($"Updating paddle - Position: {racketData.Position}, Rotation: {racketData.Rotation}");
-                }
-                else
-                {
-                    Debug.LogWarning("No racket motion data available");
+                    visualizer.UpdateRacketTransform(racketData.Position, racketData.Rotation);
                 }
             }
             catch (Exception e)
@@ -141,7 +103,6 @@ namespace StepUpTableTennis.Playback
         {
             if (currentShot == null) return;
             isPlaying = true;
-            visualizer.ClearTrail();
         }
 
         public void Pause()

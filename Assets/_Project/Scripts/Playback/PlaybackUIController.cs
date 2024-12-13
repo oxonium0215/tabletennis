@@ -29,7 +29,6 @@ namespace StepUpTableTennis.Playback
         {
             playbackManager = GetComponent<PlaybackManager>();
             SetupListeners();
-            speedSlider.value = 1.0f;
         }
 
         private void OnDestroy()
@@ -85,7 +84,6 @@ namespace StepUpTableTennis.Playback
         private void OnShotSelected(TrainingShot shot)
         {
             playbackManager.Initialize(shot);
-            timelineSlider.value = 0f;
         }
 
         private void OnTimelineValueChanged(float value)
@@ -139,16 +137,6 @@ namespace StepUpTableTennis.Playback
             var icon = playPauseButton.GetComponentInChildren<TextMeshProUGUI>();
             if (icon != null)
                 icon.text = playbackManager.IsPlaying() ? "❚❚" : "▶";
-        }
-
-        public void ShowPlaybackUI()
-        {
-            gameObject.SetActive(true);
-        }
-
-        public void HidePlaybackUI()
-        {
-            gameObject.SetActive(false);
         }
     }
 }

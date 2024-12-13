@@ -25,7 +25,7 @@ namespace StepUpTableTennis.Playback
             LoadLatestSession();
         }
 
-        public async void LoadLatestSession()
+        private async void LoadLatestSession()
         {
             try
             {
