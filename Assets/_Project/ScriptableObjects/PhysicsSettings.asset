@@ -15,7 +15,7 @@ MonoBehaviour:
   Gravity: {x: 0, y: -9.81, z: 0}
   AirDensity: 1.204
   TimeStep: 0.004166667
-  MaxSubsteps: 8
+  MaxSubsteps: 100
   BallMass: 0.0027
   BallRadius: 0.02
   BallDragCoefficient: 0.47
@@ -25,6 +25,6 @@ MonoBehaviour:
   TableFriction: 0.2
   TableSize: {x: 1.525, y: 0.065, z: 2.74}
   PaddleRestitution: 0.7
-  PaddleFriction: 0.65
+  PaddleFriction: 0.1
   PaddleSize: {x: 0.15, y: 0.18}
   PaddleThickness: 0.015
