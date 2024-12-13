@@ -1,0 +1,19 @@
+# ninja log v5
+7	385	7556917112753954	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	d98422902b9bbd71
+18	426	7556917113146821	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	4f37b415bc0378a1
+15	418	7556917113095816	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	6cc0840ebfa4e7fd
+5	476	7556917113658511	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	d84162ee581752d9
+9	425	7556917113182167	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	7a03557cca448b86
+21	425	7556917113146821	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	69253a2474fe3149
+12	569	7556917114606619	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	7d060ddf50d9e5b8
+2	625	7556917115130708	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	ec0e5f75fdba6b14
+625	716	7556917116097565	C:/Users/herri/Unity/StepUpTableTennis/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/v4q2r3o5/obj/arm64-v8a/libgame.so	de0b2ea93e7e932d
+26	655	7556922793623033	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	4f37b415bc0378a1
+12	659	7556922793679336	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	d98422902b9bbd71
+8	666	7556922793760273	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	7a03557cca448b86
+16	668	7556922793785393	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	6cc0840ebfa4e7fd
+32	717	7556922794261095	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	69253a2474fe3149
+6	728	7556922794377536	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	d84162ee581752d9
+21	836	7556922795446016	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	7d060ddf50d9e5b8
+2	890	7556922795979115	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	ec0e5f75fdba6b14
+890	962	7556922796743952	C:/Users/herri/Unity/StepUpTableTennis/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/v4q2r3o5/obj/arm64-v8a/libgame.so	de0b2ea93e7e932d
