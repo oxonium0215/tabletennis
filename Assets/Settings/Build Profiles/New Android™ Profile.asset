@@ -18,7 +18,7 @@ MonoBehaviour:
   m_PlatformId: b9b35072a6f44c2e863f17467ea3dc13
   m_PlatformBuildProfile:
     rid: 3050400659745013834
-  m_OverrideGlobalSceneList: 0
+  m_OverrideGlobalSceneList: 1
   m_Scenes:
   - m_enabled: 1
     m_path: Assets/_Project/Scenes/SessionTest.unity
@@ -201,7 +201,7 @@ MonoBehaviour:
     - line: '|     iPhone: 0'
     - line: '|     tvOS: 0'
     - line: '|   overrideDefaultApplicationIdentifier: 1'
-    - line: '|   AndroidBundleVersionCode: 20'
+    - line: '|   AndroidBundleVersionCode: 29'
     - line: '|   AndroidMinSdkVersion: 29'
     - line: '|   AndroidTargetSdkVersion: 32'
     - line: '|   AndroidPreferredInstallLocation: 0'
@@ -556,7 +556,7 @@ MonoBehaviour:
     - line: '|     m_APIs: 10000000'
     - line: '|     m_Automatic: 1'
     - line: '|   - m_BuildTarget: AndroidPlayer'
-    - line: '|     m_APIs: 150000000b000000'
+    - line: '|     m_APIs: 15000000'
     - line: '|     m_Automatic: 0'
     - line: '|   - m_BuildTarget: WindowsStandaloneSupport'
     - line: '|     m_APIs: 02000000'
@@ -1019,7 +1019,7 @@ MonoBehaviour:
         m_ExportAsGoogleAndroidProject: 0
         m_DebugSymbolLevel: 1
         m_DebugSymbolFormat: 5
-        m_CurrentDeploymentTargetId: 2G0YC1ZF7T0J1D
+        m_CurrentDeploymentTargetId: __builtin__target_default
         m_BuildType: 2
         m_BuildAppBundle: 0
         m_IPAddressToConnect: 

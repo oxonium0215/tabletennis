@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using StepUpTableTennis.DataManagement.Core.Models;
 using StepUpTableTennis.DataManagement.Recording;
@@ -14,7 +13,6 @@ using StepUpTableTennis.TableTennisEngine.Trajectory;
 using StepUpTableTennis.TableTennisEngine.Visualization;
 using UnityEngine;
 using UnityEngine.Events;
-using Random = UnityEngine.Random;
 
 namespace StepUpTableTennis.Training
 {
@@ -61,7 +59,6 @@ namespace StepUpTableTennis.Training
         private DateTime sessionStartTime;
         private int successfulShots;
         private int totalExecutedShots;
-        public event Action<CollisionEventArgs> OnCollisionOccurred;
 
         private void Start()
         {
@@ -84,6 +81,8 @@ namespace StepUpTableTennis.Training
         {
             ValidateComponents();
         }
+
+        public event Action<CollisionEventArgs> OnCollisionOccurred;
 
         public async Task<bool> PrepareNewSession()
         {
@@ -222,39 +221,46 @@ namespace StepUpTableTennis.Training
 
         private ShotParameters GenerateShotParameters(SessionDifficulty difficulty)
         {
-            if (ballLauncher == null) throw new InvalidOperationException("BallLauncher reference not set!");
+            if (ballLauncher == null)
+                throw new InvalidOperationException("BallLauncher reference not set!");
 
-            var speed = difficultySettings.GetSpeedForLevel();
-            var spinParams = difficultySettings.GetSpinForLevel();
-            var courseVariation = difficultySettings.GetCourseVariationForLevel();
+            // **1. 発射位置の決定**
+            // ボールランチャーの基本位置にオフセットを追加して発射位置を決定
+            var launchBase = ballLauncher.transform.position; // ランチャーのワールド座標
+            var launchOffset = difficultySettings.GetLaunchOffset();
+            var launchPosition = launchBase + launchOffset;
 
-            // ADD: コース選択
-            // 発射オフセット決定
-            Vector3 launchBase = ballLauncher.transform.position;
-            Vector3 launchOffset = difficultySettings.GetLaunchOffset();
-            Vector3 launchPosition = launchBase + launchOffset;
-
-            // テーブル情報からバウンドコース決定
-            // テーブル中心・方向・サイズを取得
+            // **2. バウンス位置の決定**
+            // テーブル情報を基にバウンス地点をCourseSettingsから取得
             var table = tableSetup.Table;
-            // テーブルのx方向幅: table.Size.x, z方向: table.Size.zであることを想定
-            // ここでBounceTarget取得にあたり、UI側で使った(tableWidth, tableDepth)と合せるため
-            // テーブルは (Length方向: x, Width方向: z) なのかによって変わるが、ここでは
-            // table.Size.xを幅、table.Size.zを奥行きとして使用するとする。
-            Vector2 tableSize = new Vector2(table.Size.x, table.Size.z);
-            // テーブルのforwardはtransformから取得できないので、ここではワールド空間でZ方向をforwardとする仮定
-            // もし特定の向きがあるならtableのRotationからforward/rightを算出:
-            Vector3 tableForward = table.Rotation * Vector3.left;
-            Vector3 tableRight = table.Rotation * Vector3.forward;
-            Vector3 targetPosition = difficultySettings.GetBounceTargetPosition(table.Position, tableForward, tableRight, tableSize);
 
-            return new ShotParameters(
-                launchPosition,
-                targetPosition,
-                speed,
-                spinParams.RotationsPerSecond,
-                spinParams.SpinAxis
+            // テーブルのサイズ (width: X方向の幅, length: Z方向の長さ)
+            var tableSize = new Vector2(table.Size.x, table.Size.z);
+
+            // ボール半径をPhysicsSettingsから取得
+            var ballRadius = physicsSettings.BallRadius;
+
+            // バウンス目標位置を取得
+            var bounceTargetPosition = difficultySettings.GetRandomBounceTarget(table.Position, tableSize, ballRadius);
+
+            // **3. 難易度に基づく速度とスピンの取得**
+            var speed = difficultySettings.GetSpeedForLevel(); // ボールの速度 (m/s)
+            var spin = difficultySettings.GetSpinForLevel(); // スピン情報
+
+            // **4. ShotParametersの生成**
+            // バウンス位置をターゲットにし、速度とスピン軸を考慮してパラメータを構築
+            var shotParameters = new ShotParameters(
+                launchPosition, // 発射位置
+                bounceTargetPosition, // バウンス目標位置
+                speed, // 初速度 (m/s)
+                spin.RotationsPerSecond, // 回転数 (rps)
+                spin.SpinAxis // 回転軸
             );
+
+            Debug.Log(
+                $"Generated Shot: Launch={launchPosition}, Bounce={bounceTargetPosition}, Speed={speed:F2}m/s, Spin={spin.RotationsPerSecond} rps, Axis={spin.SpinAxis}");
+
+            return shotParameters;
         }
 
         private void ExecuteNextShot()

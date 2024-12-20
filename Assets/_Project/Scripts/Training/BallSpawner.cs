@@ -45,17 +45,13 @@ namespace StepUpTableTennis.Training
             // 初期状態の設定（位置、速度、角速度）
             ball.ResetState(position, velocity, angularVelocity);
 
-            Debug.Log($"Ball spawned at {position} with velocity {velocity}");
             return ball;
         }
-        
+
         public void DestroyAllBalls()
         {
             var visualizers = FindObjectsOfType<BallStateManager>();
-            foreach (var visualizer in visualizers)
-            {
-                Destroy(visualizer.gameObject);
-            }
+            foreach (var visualizer in visualizers) Destroy(visualizer.gameObject);
         }
     }
 }

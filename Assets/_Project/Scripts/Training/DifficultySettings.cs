@@ -31,27 +31,49 @@ namespace StepUpTableTennis.Training
     [Serializable]
     public class DifficultySettings
     {
-        [Range(1, 7)] public int SpeedLevel = 1;
-        [Range(1, 5)] public int SpinLevel = 1;
-        [Range(1, 5)] public int CourseLevel = 1;
+        [Header("Difficulty Levels")] [Range(1, 7)] [Tooltip("Speed Level from 1 to 7")]
+        public int SpeedLevel = 1;
 
-        // ADD: コース設定インスタンスを追加
-        public CourseSettings CourseSettings = new CourseSettings();
+        [Range(1, 5)] [Tooltip("Spin Level from 1 to 5")]
+        public int SpinLevel = 1;
 
+        public CourseSettings CourseSettings = new();
+        private int courseLevel = 1;
+
+        [Range(1, 5)]
+        [Tooltip("Course Level from 1 to 5")]
+        public int CourseLevel
+        {
+            get => courseLevel;
+            set
+            {
+                if (courseLevel != value)
+                {
+                    courseLevel = value;
+                    // コースレベルが変更されたらテンプレートを適用
+                    CourseTemplateSettings.ApplyTemplate(CourseSettings, courseLevel);
+                }
+            }
+        }
+
+        /// <summary>
+        ///     テーブル上でのボール速度(初速)を難易度レベルに基づいて算出
+        /// </summary>
         public float GetSpeedForLevel()
         {
             var baseSpeed = SpeedLevel switch
             {
-                1 => Random.Range(18f, 18f),
-                2 => Random.Range(21f, 21f),
-                3 => Random.Range(24f, 24f),
-                4 => Random.Range(27f, 27f),
-                5 => Random.Range(30f, 30f),
-                6 => Random.Range(33f, 33f),
-                7 => Random.Range(36f, 36f),
+                1 => 18f, // 18 km/h
+                2 => 21f, // 21 km/h
+                3 => 24f, // 24 km/h
+                4 => 27f, // 27 km/h
+                5 => 30f, // 30 km/h
+                6 => 33f, // 33 km/h
+                7 => 36f, // 36 km/h
                 _ => 21f
             };
 
+            // km/h から m/s に換算
             return baseSpeed / 3.6f;
         }
 
@@ -68,11 +90,17 @@ namespace StepUpTableTennis.Training
                     rps = Random.Range(0f, 10f);
                     axis = Vector3.right;
                     break;
+
                 case 2:
+                {
                     var rand2 = Random.value;
-                    if (rand2 < 0.3f) spinType = SpinType.NoSpin;
-                    else if (rand2 < 0.7f) spinType = SpinType.TopSpin;
-                    else spinType = SpinType.BackSpin;
+                    if (rand2 < 0.3f)
+                        spinType = SpinType.NoSpin;
+                    else if (rand2 < 0.7f)
+                        spinType = SpinType.TopSpin;
+                    else
+                        spinType = SpinType.BackSpin;
+
                     rps = Random.Range(5f, 20f);
                     axis = spinType switch
                     {
@@ -80,13 +108,21 @@ namespace StepUpTableTennis.Training
                         SpinType.BackSpin => -Vector3.right,
                         _ => Vector3.zero
                     };
+                }
                     break;
+
                 case 3:
+                {
                     var rand3 = Random.value;
-                    if (rand3 < 0.2f) spinType = SpinType.NoSpin;
-                    else if (rand3 < 0.5f) spinType = SpinType.TopSpin;
-                    else if (rand3 < 0.8f) spinType = SpinType.BackSpin;
-                    else spinType = SpinType.SideSpin;
+                    if (rand3 < 0.2f)
+                        spinType = SpinType.NoSpin;
+                    else if (rand3 < 0.5f)
+                        spinType = SpinType.TopSpin;
+                    else if (rand3 < 0.8f)
+                        spinType = SpinType.BackSpin;
+                    else
+                        spinType = SpinType.SideSpin;
+
                     rps = Random.Range(15f, 35f);
                     axis = spinType switch
                     {
@@ -95,14 +131,23 @@ namespace StepUpTableTennis.Training
                         SpinType.SideSpin => Vector3.forward,
                         _ => Vector3.zero
                     };
+                }
                     break;
+
                 case 4:
+                {
                     var rand4 = Random.value;
-                    if (rand4 < 0.1f) spinType = SpinType.NoSpin;
-                    else if (rand4 < 0.35f) spinType = SpinType.TopSpin;
-                    else if (rand4 < 0.6f) spinType = SpinType.BackSpin;
-                    else if (rand4 < 0.8f) spinType = SpinType.SideSpin;
-                    else spinType = SpinType.ComplexSpin;
+                    if (rand4 < 0.1f)
+                        spinType = SpinType.NoSpin;
+                    else if (rand4 < 0.35f)
+                        spinType = SpinType.TopSpin;
+                    else if (rand4 < 0.6f)
+                        spinType = SpinType.BackSpin;
+                    else if (rand4 < 0.8f)
+                        spinType = SpinType.SideSpin;
+                    else
+                        spinType = SpinType.ComplexSpin;
+
                     rps = Random.Range(25f, 45f);
 
                     if (spinType == SpinType.ComplexSpin)
@@ -119,14 +164,23 @@ namespace StepUpTableTennis.Training
                             SpinType.SideSpin => Vector3.forward,
                             _ => Vector3.zero
                         };
+                }
                     break;
+
                 case 5:
+                {
                     var rand5 = Random.value;
-                    if (rand5 < 0.05f) spinType = SpinType.NoSpin;
-                    else if (rand5 < 0.3f) spinType = SpinType.TopSpin;
-                    else if (rand5 < 0.55f) spinType = SpinType.BackSpin;
-                    else if (rand5 < 0.75f) spinType = SpinType.SideSpin;
-                    else spinType = SpinType.ComplexSpin;
+                    if (rand5 < 0.05f)
+                        spinType = SpinType.NoSpin;
+                    else if (rand5 < 0.3f)
+                        spinType = SpinType.TopSpin;
+                    else if (rand5 < 0.55f)
+                        spinType = SpinType.BackSpin;
+                    else if (rand5 < 0.75f)
+                        spinType = SpinType.SideSpin;
+                    else
+                        spinType = SpinType.ComplexSpin;
+
                     rps = Random.Range(35f, 60f);
 
                     if (spinType == SpinType.ComplexSpin)
@@ -143,7 +197,9 @@ namespace StepUpTableTennis.Training
                             SpinType.SideSpin => Vector3.forward,
                             _ => Vector3.zero
                         };
+                }
                     break;
+
                 default:
                     return new SpinParameters(SpinType.NoSpin, 0f, Vector3.zero);
             }
@@ -164,19 +220,38 @@ namespace StepUpTableTennis.Training
             };
         }
 
-        // ADD: ランチ位置オフセット取得
+        /// <summary>
+        ///     ランチ(発射)位置オフセットをCourseSettingsから取得
+        /// </summary>
         public Vector3 GetLaunchOffset()
         {
-            return CourseSettings.GetLaunchOffset();
+            var index = CourseSettings.SelectLaunchIndex();
+            var offsetX = index switch
+            {
+                0 => -0.6f,
+                2 => 0.6f,
+                _ => 0f
+            };
+            return new Vector3(offsetX, 0, 0);
         }
 
-        // ADD: バウンドコースから1点を取得
-        // tableCenter: テーブル中心位置
-        // tableForward, tableRight: テーブルの向きベクトル
-        // tableSize: (width, depth)
-        public Vector3 GetBounceTargetPosition(Vector3 tableCenter, Vector3 tableForward, Vector3 tableRight, Vector2 tableSize)
+        /// <summary>
+        ///     バウンス地点をCourseSettingsから取得し、指定したテーブル中心・サイズ・ボール半径から座標計算
+        /// </summary>
+        public Vector3 GetRandomBounceTarget(Vector3 center, Vector2 tableSize, float ballRadius)
         {
-            return CourseSettings.GetBounceTargetPosition(tableCenter, tableForward, tableRight, tableSize);
+            var width = tableSize.x;
+            var length = tableSize.y;
+
+            var (row, col) = CourseSettings.SelectBounceIndex();
+
+            return CourseSettings.GetBounceTargetPosition(center, width, length, ballRadius, row, col);
+        }
+
+        // 初期化時にもテンプレートを適用するメソッドを追加
+        public void Initialize()
+        {
+            CourseTemplateSettings.ApplyTemplate(CourseSettings, CourseLevel);
         }
     }
 }
