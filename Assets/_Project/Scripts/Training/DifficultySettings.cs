@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using StepUpTableTennis.Training.Course;
 using Random = UnityEngine.Random;
 
 namespace StepUpTableTennis.Training
@@ -31,33 +32,29 @@ namespace StepUpTableTennis.Training
     [Serializable]
     public class DifficultySettings
     {
-        [Header("Difficulty Levels")] [Range(1, 7)] [Tooltip("Speed Level from 1 to 7")]
+        [Header("Difficulty Levels")]
+        [Range(1, 7)]
+        [Tooltip("Speed Level from 1 to 7")]
         public int SpeedLevel = 1;
 
-        [Range(1, 5)] [Tooltip("Spin Level from 1 to 5")]
+        [Range(1, 5)]
+        [Tooltip("Spin Level from 1 to 5")]
         public int SpinLevel = 1;
-
-        public CourseSettings CourseSettings = new();
-        private int courseLevel = 1;
 
         [Range(1, 5)]
         [Tooltip("Course Level from 1 to 5")]
-        public int CourseLevel
+        public int CourseLevel = 1;
+
+        private CourseSettings courseSettings;
+
+        public void Initialize(CourseSettings settings)
         {
-            get => courseLevel;
-            set
-            {
-                if (courseLevel != value)
-                {
-                    courseLevel = value;
-                    // コースレベルが変更されたらテンプレートを適用
-                    CourseTemplateSettings.ApplyTemplate(CourseSettings, courseLevel);
-                }
-            }
+            courseSettings = settings;
+            UpdateCourseTemplate();
         }
 
         /// <summary>
-        ///     テーブル上でのボール速度(初速)を難易度レベルに基づいて算出
+        /// テーブル上でのボール速度(初速)を難易度レベルに基づいて算出
         /// </summary>
         public float GetSpeedForLevel()
         {
@@ -207,51 +204,46 @@ namespace StepUpTableTennis.Training
             return new SpinParameters(spinType, rps, axis);
         }
 
-        public Vector2 GetCourseVariationForLevel()
+        /// <summary>
+        /// バウンス地点の計算をCourseSettingsに委譲
+        /// </summary>
+        public Vector3 GetRandomBouncePosition()
         {
-            return CourseLevel switch
+            if (courseSettings == null)
             {
-                1 => new Vector2(0.1f, 0.1f),
-                2 => new Vector2(0.2f, 0.2f),
-                3 => new Vector2(0.3f, 0.3f),
-                4 => new Vector2(0.4f, 0.4f),
-                5 => new Vector2(0.5f, 0.5f),
-                _ => new Vector2(0.1f, 0.1f)
-            };
+                Debug.LogError("CourseSettings has not been initialized!");
+                return Vector3.zero;
+            }
+
+            return courseSettings.GetRandomBouncePosition();
         }
 
         /// <summary>
-        ///     ランチ(発射)位置オフセットをCourseSettingsから取得
+        /// 発射位置の計算をCourseSettingsに委譲
         /// </summary>
-        public Vector3 GetLaunchOffset()
+        public Vector3 GetLaunchPosition()
         {
-            var index = CourseSettings.SelectLaunchIndex();
-            var offsetX = index switch
+            if (courseSettings == null)
             {
-                0 => -0.6f,
-                2 => 0.6f,
-                _ => 0f
-            };
-            return new Vector3(offsetX, 0, 0);
+                Debug.LogError("CourseSettings has not been initialized!");
+                return Vector3.zero;
+            }
+
+            return courseSettings.GetLaunchPosition();
         }
 
         /// <summary>
-        ///     バウンス地点をCourseSettingsから取得し、指定したテーブル中心・サイズ・ボール半径から座標計算
+        /// コースレベルが変更されたときに呼び出される
         /// </summary>
-        public Vector3 GetRandomBounceTarget(Vector3 center, Vector2 tableSize, float ballRadius)
+        public void UpdateCourseTemplate()
         {
-            var width = tableSize.x;
-            var length = tableSize.y;
-
-            var (row, col) = CourseSettings.SelectBounceIndex();
-
-            return CourseSettings.GetBounceTargetPosition(center, width, length, ballRadius, row, col);
+            if (courseSettings == null) return;
+            courseSettings.SetTemplate(CourseLevel);
         }
 
-        // 初期化時にもテンプレートを適用するメソッドを追加
-        public void Initialize()
+        private void OnValidate()
         {
-            CourseTemplateSettings.ApplyTemplate(CourseSettings, CourseLevel);
+            UpdateCourseTemplate();
         }
     }
 }

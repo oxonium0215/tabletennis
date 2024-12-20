@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using StepUpTableTennis.TableTennisEngine.Collisions.Events;
 using StepUpTableTennis.TableTennisEngine.Collisions.System;
+using StepUpTableTennis.TableTennisEngine.Components;
 using StepUpTableTennis.TableTennisEngine.Core.Models;
 using StepUpTableTennis.TableTennisEngine.Objects;
-using StepUpTableTennis.TableTennisEngine.Objects.Base;
 using UnityEngine;
 
 namespace StepUpTableTennis.TableTennisEngine.Core
@@ -16,6 +16,7 @@ namespace StepUpTableTennis.TableTennisEngine.Core
         private readonly CollisionSystem collisionSystem;
         private readonly List<Paddle> paddles = new();
         private readonly List<Table> tables = new();
+        private readonly List<BoxColliderComponent> boxColliders = new();
 
         public TableTennisPhysics(PhysicsSettings settings)
         {
@@ -42,12 +43,18 @@ namespace StepUpTableTennis.TableTennisEngine.Core
             tables.Add(table);
         }
 
+        public void AddBoxCollider(BoxColliderComponent collider)
+        {
+            collider.Initialize(Settings);
+            boxColliders.Add(collider);
+        }
+
         public void Simulate(float deltaTime)
         {
             var subSteps = Mathf.Min(Mathf.CeilToInt(deltaTime / Settings.TimeStep), Settings.MaxSubsteps);
             var subDeltaTime = deltaTime / subSteps;
 
-            collisionSystem.BeginFrame(); // フレーム開始時にコリジョン情報をクリア
+            collisionSystem.BeginFrame();
 
             for (var i = 0; i < subSteps; i++)
             {
@@ -57,24 +64,38 @@ namespace StepUpTableTennis.TableTennisEngine.Core
                 foreach (var paddle in paddles)
                     paddle.UpdatePhysics(subDeltaTime, Settings);
 
+                // 従来のコリジョン処理
                 collisionSystem.DetectAndResolveCollisions(balls, paddles, tables);
+
+                // BoxColliderComponentとの衝突チェック
+                foreach (var ball in balls)
+                foreach (var boxCollider in boxColliders)
+                {
+                    if (boxCollider.CheckCollision(ball, out var collisionInfo))
+                    {
+                        boxCollider.ResolveCollision(collisionInfo);
+                        OnCollision?.Invoke(new CollisionEventArgs(collisionInfo));
+                    }
+                }
+                
+                var recentCollisions = collisionSystem.CurrentFrameCollisions;
+                foreach (var collisionInfo in recentCollisions)
+                {
+                    // BoxColliderはすでにOnCollisionを呼んでいるので、その重複を避けたい場合は条件分岐可能
+                    // ただしここではシンプルに全衝突対象で呼び出し
+                    if (collisionInfo.Target is Paddle || collisionInfo.Target is Table)
+                    {
+                        OnCollision?.Invoke(new CollisionEventArgs(collisionInfo));
+                    }
+                }
             }
-
-            // 蓄積された全ての衝突に対してイベントを発火
-            foreach (var collision in collisionSystem.CurrentFrameCollisions)
-                OnCollision?.Invoke(new CollisionEventArgs(collision));
         }
 
-        public IEnumerable<BallState> GetBallStates()
+        public void RemoveBoxCollider(BoxColliderComponent collider)
         {
-            return balls.Select(ball => new BallState
-            {
-                Position = ball.Position,
-                Velocity = ball.Velocity,
-                Spin = ball.Spin
-            });
+            boxColliders.Remove(collider);
         }
-
+        
         public IEnumerable<CollisionInfo> GetRecentCollisions()
         {
             return collisionSystem.CurrentFrameCollisions;

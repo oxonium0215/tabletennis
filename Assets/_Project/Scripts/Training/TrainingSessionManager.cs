@@ -7,12 +7,15 @@ using StepUpTableTennis.DataManagement.Recording;
 using StepUpTableTennis.DataManagement.Storage;
 using StepUpTableTennis.TableTennisEngine.Collisions.Events;
 using StepUpTableTennis.TableTennisEngine.Collisions.System;
+using StepUpTableTennis.TableTennisEngine.Components;
 using StepUpTableTennis.TableTennisEngine.Core;
 using StepUpTableTennis.TableTennisEngine.Core.Models;
 using StepUpTableTennis.TableTennisEngine.Trajectory;
 using StepUpTableTennis.TableTennisEngine.Visualization;
+using StepUpTableTennis.Training.Course;
 using UnityEngine;
 using UnityEngine.Events;
+using Oculus.Haptics;
 
 namespace StepUpTableTennis.Training
 {
@@ -23,32 +26,37 @@ namespace StepUpTableTennis.Training
 
     public class TrainingSessionManager : MonoBehaviour
     {
-        [Header("Core Components")] [SerializeField]
-        private PhysicsSettings physicsSettings;
-
+        [Header("Core Components")]
+        [SerializeField] private PhysicsSettings physicsSettings;
         [SerializeField] private BallLauncher ballLauncher;
         [SerializeField] private BallSpawner ballSpawner;
         [SerializeField] private PhysicsDebugger physicsDebugger;
 
-        [Header("Physics Objects")] [SerializeField]
-        private TableSetup tableSetup;
-
+        [Header("Physics Objects")]
+        [SerializeField] private BoxColliderComponent tableCollider; // Changed from TableSetup
+        [SerializeField] private BoxColliderComponent netCollider;   // Added for net collision
         [SerializeField] private PaddleSetup paddleStateHandler;
-        [Header("Session Settings")] public DifficultySettings difficultySettings = new();
+
+        [Header("Session Settings")]
+        public DifficultySettings difficultySettings = new();
         [SerializeField] private bool autoStart;
-        [Header("Session Settings")] public int shotsPerSession = 10;
+
+        [Header("Session Control")]
+        public int shotsPerSession = 10;
         public float shotInterval = 3f;
         public bool removeBalLAfterPaddleHit;
         [SerializeField] public float ballRemovalForce = 1000f;
 
-        [Header("Recording Components")] [SerializeField]
-        private Transform headTransform;
+        [Header("Recording Components")]
+        [SerializeField] private Transform headTransform;
 
-        [Header("Events")] public UnityEvent onSessionStart;
+        [Header("Events")]
+        public UnityEvent onSessionStart;
         public UnityEvent onSessionComplete;
         public UnityEvent onSessionPause;
         public UnityEvent onSessionResume;
         public SessionStatisticsEvent onSessionStatistics;
+
         private TrainingSession currentSession;
         private int currentShotIndex;
         private TrainingDataStorage dataStorage;
@@ -59,10 +67,30 @@ namespace StepUpTableTennis.Training
         private DateTime sessionStartTime;
         private int successfulShots;
         private int totalExecutedShots;
+        public HapticClip clip;
+        private HapticClipPlayer player;
+
+        // --- ここから追加 ---
+        // 最後に生成されたショットパラメータを可視化するためのフィールド
+        private Vector3 lastLaunchPosition;
+        private Vector3 lastBounceTargetPosition;
+        private bool hasLastShotParameters; // 最後のショット情報があるかどうか
+        public Color aimLineColor = Color.magenta; // 目標ライン表示用のカラー
+        public float aimSphereRadius = 0.05f; // バウンド目標位置を示す球の大きさ
+        // --- ここまで追加 ---
 
         private void Start()
         {
+            player = new HapticClipPlayer(clip);
             InitializeComponents();
+
+            var courseSettings = new CourseSettings(
+                tableCollider,
+                ballLauncher.transform,
+                physicsSettings.BallRadius
+            );
+            difficultySettings.Initialize(courseSettings);
+
             if (autoStart) StartNewSession();
         }
 
@@ -73,7 +101,10 @@ namespace StepUpTableTennis.Training
             physicsEngine.Simulate(Time.deltaTime);
             motionRecorder.UpdateRecording();
 
-            if (Time.time >= nextShotTime && currentShotIndex < currentSession.Shots.Count) ExecuteNextShot();
+            if (Time.time >= nextShotTime && currentShotIndex < currentSession.Shots.Count)
+            {
+                ExecuteNextShot();
+            }
             CheckSessionCompletion();
         }
 
@@ -178,8 +209,11 @@ namespace StepUpTableTennis.Training
         {
             physicsEngine = new TableTennisPhysics(physicsSettings);
 
-            if (tableSetup != null && tableSetup.Table != null)
-                physicsEngine.AddTable(tableSetup.Table);
+            if (tableCollider != null)
+                physicsEngine.AddBoxCollider(tableCollider);
+
+            if (netCollider != null)
+                physicsEngine.AddBoxCollider(netCollider);
 
             if (paddleStateHandler != null && paddleStateHandler.Paddle != null)
                 physicsEngine.AddPaddle(paddleStateHandler.Paddle);
@@ -201,6 +235,33 @@ namespace StepUpTableTennis.Training
 
             physicsEngine.OnCollision += HandleCollision;
             physicsEngine.OnCollision += args => OnCollisionOccurred?.Invoke(args);
+            
+            // --- ここから追加 ---
+            // 衝突時のハプティクス処理を追加
+            physicsEngine.OnCollision += HandleHapticsOnCollision;
+            // --- ここまで追加 ---
+        }
+        
+        private void HandleHapticsOnCollision(CollisionEventArgs args)
+        {
+            if (args.CollisionInfo.Type == CollisionInfo.CollisionType.BallPaddle)
+            {
+                // 衝突強度を計算
+                float impactForce = args.CollisionInfo.GetImpactForce(physicsSettings);
+                Debug.Log("Collision occurred: " + impactForce);
+
+                // impactForceはある程度の範囲に正規化した方がよい
+                // 例：最大値を仮に100N程度と想定して0～1に正規化
+                float normalizedForce = Mathf.Clamp01(impactForce / 10f);
+
+                // normalizedForceに応じてハプティクス強度を決定
+                float amplitude = normalizedForce; // 0～1
+                float duration = 0.1f + 0.2f * normalizedForce; // 衝突が大きいほど長く振動
+                player.amplitude = amplitude;
+
+                // ハプティクスを再生
+                player.Play(Controller.Right);
+            }
         }
 
         private async Task<List<TrainingShot>> GenerateAndCalculateShots(SessionConfig config)
@@ -214,6 +275,13 @@ namespace StepUpTableTennis.Training
                 var calculatedParams = await calculator.CalculateTrajectoryAsync(parameters);
                 var shot = new TrainingShot(calculatedParams);
                 shots.Add(shot);
+
+                // --- ここから追加 ---
+                // 生成したショットパラメータを記録し、後でGizmosで表示できるようにする
+                lastLaunchPosition = calculatedParams.LaunchPosition;
+                lastBounceTargetPosition = calculatedParams.AimPosition;
+                hasLastShotParameters = true;
+                // --- ここまで追加 ---
             }
 
             return shots;
@@ -224,41 +292,27 @@ namespace StepUpTableTennis.Training
             if (ballLauncher == null)
                 throw new InvalidOperationException("BallLauncher reference not set!");
 
-            // **1. 発射位置の決定**
-            // ボールランチャーの基本位置にオフセットを追加して発射位置を決定
-            var launchBase = ballLauncher.transform.position; // ランチャーのワールド座標
-            var launchOffset = difficultySettings.GetLaunchOffset();
-            var launchPosition = launchBase + launchOffset;
+            var launchPosition = difficultySettings.GetLaunchPosition();
+            var bounceTargetPosition = difficultySettings.GetRandomBouncePosition();
 
-            // **2. バウンス位置の決定**
-            // テーブル情報を基にバウンス地点をCourseSettingsから取得
-            var table = tableSetup.Table;
+            var speed = difficultySettings.GetSpeedForLevel();
+            var spin = difficultySettings.GetSpinForLevel();
 
-            // テーブルのサイズ (width: X方向の幅, length: Z方向の長さ)
-            var tableSize = new Vector2(table.Size.x, table.Size.z);
-
-            // ボール半径をPhysicsSettingsから取得
-            var ballRadius = physicsSettings.BallRadius;
-
-            // バウンス目標位置を取得
-            var bounceTargetPosition = difficultySettings.GetRandomBounceTarget(table.Position, tableSize, ballRadius);
-
-            // **3. 難易度に基づく速度とスピンの取得**
-            var speed = difficultySettings.GetSpeedForLevel(); // ボールの速度 (m/s)
-            var spin = difficultySettings.GetSpinForLevel(); // スピン情報
-
-            // **4. ShotParametersの生成**
-            // バウンス位置をターゲットにし、速度とスピン軸を考慮してパラメータを構築
             var shotParameters = new ShotParameters(
-                launchPosition, // 発射位置
-                bounceTargetPosition, // バウンス目標位置
-                speed, // 初速度 (m/s)
-                spin.RotationsPerSecond, // 回転数 (rps)
-                spin.SpinAxis // 回転軸
+                launchPosition,
+                bounceTargetPosition,
+                speed,
+                spin.RotationsPerSecond,
+                spin.SpinAxis
             );
 
             Debug.Log(
-                $"Generated Shot: Launch={launchPosition}, Bounce={bounceTargetPosition}, Speed={speed:F2}m/s, Spin={spin.RotationsPerSecond} rps, Axis={spin.SpinAxis}");
+                $"Generated Shot: Launch={launchPosition}, " +
+                $"Bounce={bounceTargetPosition}, " +
+                $"Speed={speed:F2}m/s, " +
+                $"Spin={spin.RotationsPerSecond} rps, " +
+                $"Axis={spin.SpinAxis}"
+            );
 
             return shotParameters;
         }
@@ -286,10 +340,18 @@ namespace StepUpTableTennis.Training
             shot.RecordExecution(DateTime.Now, false);
             motionRecorder.SetCurrentShot(currentShotIndex);
 
+            // --- ここから追加 ---
+            // 発射するたびに更新
+            lastLaunchPosition = parameters.LaunchPosition;
+            lastBounceTargetPosition = parameters.AimPosition;
+            hasLastShotParameters = true;
+            // --- ここまで追加 ---
+
             currentShotIndex++;
             nextShotTime = Time.time + shotInterval;
             totalExecutedShots++;
         }
+
 
         private void CheckSessionCompletion()
         {
@@ -339,7 +401,8 @@ namespace StepUpTableTennis.Training
 
         private void ResetSessionState()
         {
-            if (ballSpawner != null) ballSpawner.DestroyAllBalls();
+            if (ballSpawner != null)
+                ballSpawner.DestroyAllBalls();
 
             currentSession = null;
             currentShotIndex = 0;
@@ -369,6 +432,9 @@ namespace StepUpTableTennis.Training
             if (physicsSettings == null)
                 Debug.LogError("PhysicsSettings is not assigned!");
 
+            if (tableCollider == null)
+                tableCollider = FindObjectOfType<BoxColliderComponent>();
+
             if (ballLauncher == null)
                 ballLauncher = GetComponentInChildren<BallLauncher>();
 
@@ -378,11 +444,39 @@ namespace StepUpTableTennis.Training
             if (physicsDebugger == null)
                 physicsDebugger = GetComponentInChildren<PhysicsDebugger>();
 
-            if (tableSetup == null)
-                tableSetup = FindObjectOfType<TableSetup>();
-
             if (paddleStateHandler == null)
                 paddleStateHandler = FindObjectOfType<PaddleSetup>();
         }
+
+        private void OnDestroy()
+        {
+            if (physicsEngine != null)
+            {
+                if (tableCollider != null)
+                    physicsEngine.RemoveBoxCollider(tableCollider);
+
+                if (netCollider != null)
+                    physicsEngine.RemoveBoxCollider(netCollider);
+            }
+        }
+
+        // --- ここから追加 ---
+        // OnDrawGizmosで、最後に生成したショットの発射地点とターゲット地点を可視化
+        private void OnDrawGizmos()
+        {
+            if (hasLastShotParameters)
+            {
+                Gizmos.color = aimLineColor;
+                // 発射地点からターゲット地点へライン
+                Gizmos.DrawLine(lastLaunchPosition, lastBounceTargetPosition);
+                // ターゲット地点に球を表示
+                Gizmos.DrawSphere(lastBounceTargetPosition, aimSphereRadius);
+
+                // 発射地点にも小さな球を描いてわかりやすくする
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawSphere(lastLaunchPosition, aimSphereRadius * 0.5f);
+            }
+        }
+        // --- ここまで追加 ---
     }
 }

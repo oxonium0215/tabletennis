@@ -64,7 +64,7 @@ namespace StepUpTableTennis.Training
                     }
                     break;
 
-                case CollisionInfo.CollisionType.BallTable:
+                case CollisionInfo.CollisionType.BallBox:
                     if (tableHitSound != null)
                     {
                         PlaySound(tableAudioSource, tableHitSound, args.CollisionInfo.Point, tableHitVolume);
