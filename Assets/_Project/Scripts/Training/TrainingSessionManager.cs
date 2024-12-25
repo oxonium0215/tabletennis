@@ -62,13 +62,47 @@ namespace StepUpTableTennis.Training
         private TrainingDataStorage dataStorage;
         private bool isSessionActive;
         private IMotionRecorder motionRecorder;
-        private float nextShotTime;
         private TableTennisPhysics physicsEngine;
         private DateTime sessionStartTime;
         private int successfulShots;
         private int totalExecutedShots;
         public HapticClip clip;
         private HapticClipPlayer player;
+        
+        // nextShotTimeをプロパティとして公開
+        public float NextShotTime { get; private set; }
+        
+        public Vector3 GetNextShotPosition()
+        {
+            if (CurrentShot != null && CurrentShot.Parameters != null)
+            {
+                return CurrentShot.Parameters.LaunchPosition;
+            }
+            return Vector3.zero;
+        }
+        
+        public int GetCurrentShotIndex()
+        {
+            return currentShotIndex;
+        }
+
+
+        // 次のショット情報を取得するためのプロパティ
+        public TrainingShot CurrentShot =>
+            currentShotIndex >= 0 && currentShotIndex < currentSession.Shots.Count
+                ? currentSession.Shots[currentShotIndex]
+                : null;
+        
+        public TrainingShot JustFiredShot
+        {
+            get
+            {
+                int index = currentShotIndex - 1; // 発射後にindex++されてるなら-1
+                if (index < 0) return null;
+                if (index >= currentSession.Shots.Count) return null;
+                return currentSession.Shots[index];
+            }
+        }
 
         // --- ここから追加 ---
         // 最後に生成されたショットパラメータを可視化するためのフィールド
@@ -101,7 +135,8 @@ namespace StepUpTableTennis.Training
             physicsEngine.Simulate(Time.deltaTime);
             motionRecorder.UpdateRecording();
 
-            if (Time.time >= nextShotTime && currentShotIndex < currentSession.Shots.Count)
+            // Time.time が NextShotTime に達した時のみ発射
+            if (Time.time >= NextShotTime && currentShotIndex < currentSession.Shots.Count)
             {
                 ExecuteNextShot();
             }
@@ -176,7 +211,7 @@ namespace StepUpTableTennis.Training
 
             isSessionActive = true;
             sessionStartTime = DateTime.Now;
-            nextShotTime = Time.time;
+            NextShotTime = Time.time; // 最初のショットはすぐに発射
 
             Debug.Log($"Started new session: {currentSession.Id.Value}");
 
@@ -194,6 +229,7 @@ namespace StepUpTableTennis.Training
         {
             if (!isSessionActive) return;
             isSessionActive = false;
+            NextShotTime = float.MaxValue; // 一時停止中は発射しない
             onSessionPause?.Invoke();
         }
 
@@ -201,7 +237,7 @@ namespace StepUpTableTennis.Training
         {
             if (isSessionActive || currentSession == null) return;
             isSessionActive = true;
-            nextShotTime = Time.time;
+            NextShotTime = Time.time; // 再開時に次のショット時間をリセット
             onSessionResume?.Invoke();
         }
 
@@ -276,15 +312,27 @@ namespace StepUpTableTennis.Training
                 var shot = new TrainingShot(calculatedParams);
                 shots.Add(shot);
 
-                // --- ここから追加 ---
-                // 生成したショットパラメータを記録し、後でGizmosで表示できるようにする
+                // これらの行を保持
                 lastLaunchPosition = calculatedParams.LaunchPosition;
                 lastBounceTargetPosition = calculatedParams.AimPosition;
                 hasLastShotParameters = true;
-                // --- ここまで追加 ---
             }
 
             return shots;
+        }
+        
+        public bool TryGetLastShotParameters(out Vector3 launchPos, out Vector3 bouncePos)
+        {
+            if (hasLastShotParameters)
+            {
+                launchPos = lastLaunchPosition;
+                bouncePos = lastBounceTargetPosition;
+                return true;
+            }
+
+            launchPos = Vector3.zero;
+            bouncePos = Vector3.zero;
+            return false;
         }
 
         private ShotParameters GenerateShotParameters(SessionDifficulty difficulty)
@@ -340,22 +388,18 @@ namespace StepUpTableTennis.Training
             shot.RecordExecution(DateTime.Now, false);
             motionRecorder.SetCurrentShot(currentShotIndex);
 
-            // --- ここから追加 ---
-            // 発射するたびに更新
             lastLaunchPosition = parameters.LaunchPosition;
             lastBounceTargetPosition = parameters.AimPosition;
             hasLastShotParameters = true;
-            // --- ここまで追加 ---
 
             currentShotIndex++;
-            nextShotTime = Time.time + shotInterval;
-            totalExecutedShots++;
+            NextShotTime = Time.time + shotInterval;
         }
 
 
         private void CheckSessionCompletion()
         {
-            if (currentShotIndex >= currentSession.Shots.Count && Time.time > nextShotTime + 1.0f)
+            if (currentShotIndex >= currentSession.Shots.Count && Time.time > NextShotTime + 1f)
             {
                 Debug.Log($"Session completed. Total shots: {totalExecutedShots}, Successful: {successfulShots}");
                 StopSession();
@@ -409,7 +453,7 @@ namespace StepUpTableTennis.Training
             successfulShots = 0;
             totalExecutedShots = 0;
             isSessionActive = false;
-            nextShotTime = 0;
+            NextShotTime = float.MaxValue; // リセット時は十分大きな値に
         }
 
         private void HandleCollision(CollisionEventArgs args)
