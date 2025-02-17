@@ -1,3 +1,5 @@
+// TableTennisEngine\Objects\Ball.cs
+
 using StepUpTableTennis.TableTennisEngine.Core.Models;
 using StepUpTableTennis.TableTennisEngine.Objects.Base;
 using UnityEngine;
@@ -12,6 +14,9 @@ namespace StepUpTableTennis.TableTennisEngine.Objects
 
     public class Ball : PhysicsObject
     {
+        private static int nextId = 1; // ボールIDの自動生成用
+        public int Id { get; private set; } // ボールの一意なID
+
         private Vector3 accumulatedForces = Vector3.zero;
         private Vector3 accumulatedTorques = Vector3.zero;
         private PhysicsSettings settings;
@@ -21,6 +26,21 @@ namespace StepUpTableTennis.TableTennisEngine.Objects
         {
             get => spin;
             private set => spin = value;
+        }
+
+        public Ball()
+        {
+            Id = nextId++;
+        }
+
+        public override int GetHashCode()
+        {
+            return Id;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is Ball other && Id == other.Id;
         }
 
         public void Initialize(PhysicsSettings physicsSettings)

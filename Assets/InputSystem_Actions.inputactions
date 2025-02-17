@@ -81,10 +81,19 @@
                     "name": "Sprint",
                     "type": "Button",
                     "id": "641cd816-40e6-41b4-8c3d-04687c349290",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "EyeGaze",
+                    "type": "Value",
+                    "id": "894bc060-30ef-4f3a-86f7-90cfe0c65c64",
+                    "expectedControlType": "Pose",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
                 }
             ],
             "bindings": [
@@ -470,6 +479,17 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Crouch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ca939edc-7c87-4670-ac7c-7230fb2f06cf",
+                    "path": "<EyeGaze>/pose",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "EyeGaze",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

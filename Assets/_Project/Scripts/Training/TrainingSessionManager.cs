@@ -1,4 +1,7 @@
+// TrainingSessionManager.cs
 using System;
+using System.Collections;
+//using System.Collections; // 不要なので削除
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -16,6 +19,7 @@ using StepUpTableTennis.Training.Course;
 using UnityEngine;
 using UnityEngine.Events;
 using Oculus.Haptics;
+using StepUpTableTennis.TableTennisEngine.Objects;
 
 namespace StepUpTableTennis.Training
 {
@@ -26,6 +30,8 @@ namespace StepUpTableTennis.Training
 
     public class TrainingSessionManager : MonoBehaviour
     {
+        #region Fields and Components
+
         [Header("Core Components")]
         [SerializeField] private PhysicsSettings physicsSettings;
         [SerializeField] private BallLauncher ballLauncher;
@@ -33,8 +39,8 @@ namespace StepUpTableTennis.Training
         [SerializeField] private PhysicsDebugger physicsDebugger;
 
         [Header("Physics Objects")]
-        [SerializeField] private BoxColliderComponent tableCollider; // Changed from TableSetup
-        [SerializeField] private BoxColliderComponent netCollider;   // Added for net collision
+        [SerializeField] private BoxColliderComponent tableCollider;
+        [SerializeField] private BoxColliderComponent netCollider;
         [SerializeField] private PaddleSetup paddleStateHandler;
 
         [Header("Session Settings")]
@@ -68,64 +74,81 @@ namespace StepUpTableTennis.Training
         private int totalExecutedShots;
         public HapticClip clip;
         private HapticClipPlayer player;
-        
-        // nextShotTimeをプロパティとして公開
+
+        // サッカード関連
+        [SerializeField] private SaccadeDetector saccadeDetector;
+        private MeshRenderer currentBallRenderer;
+        [SerializeField] private float saccadeHideTime = 0.1f; // 100ms間非表示
+
+        // 各ショットにつき１回だけ処理を実行するためのフラグ
+        private float currentShotExecutionTime;
+        private bool eligibleForBallHide = false;
+        private bool ballHiddenForCurrentShot = false;
+
+        // ショットパラメータの可視化用
+        private Vector3 lastLaunchPosition;
+        private Vector3 lastBounceTargetPosition;
+        private bool hasLastShotParameters;
+        public Color aimLineColor = Color.magenta;
+        public float aimSphereRadius = 0.05f;
+
+        // 連続衝突検出用
+        private Dictionary<int, (int count, float lastCollisionTime)> collisionCounts = new();
+        public float continuousCollisionThreshold = 0.5f; // 連続衝突とみなす時間閾値(秒)
+        public int requiredCollisionCount = 2; // ボールを消すために必要な衝突回数
+
+        #endregion
+
+        #region Properties
+
+        // 次のショット発射タイミング
         public float NextShotTime { get; private set; }
-        
+
         public Vector3 GetNextShotPosition()
         {
-            if (CurrentShot != null && CurrentShot.Parameters != null)
-            {
-                return CurrentShot.Parameters.LaunchPosition;
-            }
-            return Vector3.zero;
-        }
-        
-        public int GetCurrentShotIndex()
-        {
-            return currentShotIndex;
+            return CurrentShot?.Parameters?.LaunchPosition ?? Vector3.zero;
         }
 
+        public int GetCurrentShotIndex() => currentShotIndex;
 
-        // 次のショット情報を取得するためのプロパティ
         public TrainingShot CurrentShot =>
             currentShotIndex >= 0 && currentShotIndex < currentSession.Shots.Count
                 ? currentSession.Shots[currentShotIndex]
                 : null;
-        
+
         public TrainingShot JustFiredShot
         {
             get
             {
-                int index = currentShotIndex - 1; // 発射後にindex++されてるなら-1
-                if (index < 0) return null;
-                if (index >= currentSession.Shots.Count) return null;
-                return currentSession.Shots[index];
+                int index = currentShotIndex - 1;
+                return (index >= 0 && index < currentSession.Shots.Count) ? currentSession.Shots[index] : null;
             }
         }
 
-        // --- ここから追加 ---
-        // 最後に生成されたショットパラメータを可視化するためのフィールド
-        private Vector3 lastLaunchPosition;
-        private Vector3 lastBounceTargetPosition;
-        private bool hasLastShotParameters; // 最後のショット情報があるかどうか
-        public Color aimLineColor = Color.magenta; // 目標ライン表示用のカラー
-        public float aimSphereRadius = 0.05f; // バウンド目標位置を示す球の大きさ
-        // --- ここまで追加 ---
+        #endregion
+
+        #region Unity Methods
 
         private void Start()
         {
             player = new HapticClipPlayer(clip);
             InitializeComponents();
 
-            var courseSettings = new CourseSettings(
-                tableCollider,
-                ballLauncher.transform,
-                physicsSettings.BallRadius
-            );
+            // サッカードディテクターの取得とイベント登録
+            if (saccadeDetector == null)
+            {
+                saccadeDetector = GetComponent<SaccadeDetector>() ?? gameObject.AddComponent<SaccadeDetector>();
+            }
+            saccadeDetector.OnSaccadeStarted += HandleSaccadeStarted;
+            saccadeDetector.OnSaccadeEnded   += HandleSaccadeEnded;
+
+            var courseSettings = new CourseSettings(tableCollider, ballLauncher.transform, physicsSettings.BallRadius);
             difficultySettings.Initialize(courseSettings);
 
-            if (autoStart) StartNewSession();
+            if (autoStart)
+            {
+                StartNewSession();
+            }
         }
 
         private void Update()
@@ -135,7 +158,7 @@ namespace StepUpTableTennis.Training
             physicsEngine.Simulate(Time.deltaTime);
             motionRecorder.UpdateRecording();
 
-            // Time.time が NextShotTime に達した時のみ発射
+            // 次のショット発射タイミングになったら実行
             if (Time.time >= NextShotTime && currentShotIndex < currentSession.Shots.Count)
             {
                 ExecuteNextShot();
@@ -148,7 +171,89 @@ namespace StepUpTableTennis.Training
             ValidateComponents();
         }
 
-        public event Action<CollisionEventArgs> OnCollisionOccurred;
+        private void OnDestroy()
+        {
+            if (physicsEngine != null)
+            {
+                if (tableCollider != null)
+                    physicsEngine.RemoveBoxCollider(tableCollider);
+                if (netCollider != null)
+                    physicsEngine.RemoveBoxCollider(netCollider);
+            }
+        }
+
+        private void OnDrawGizmos()
+        {
+            if (hasLastShotParameters)
+            {
+                Gizmos.color = aimLineColor;
+                Gizmos.DrawLine(lastLaunchPosition, lastBounceTargetPosition);
+                Gizmos.DrawSphere(lastBounceTargetPosition, aimSphereRadius);
+
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawSphere(lastLaunchPosition, aimSphereRadius * 0.5f);
+            }
+        }
+
+        #endregion
+
+        #region Saccade Handling
+
+        /// <summary>
+        /// サッカード開始時のハンドラー。
+        /// ショット開始から80ms以上経過していれば、ボール非表示の対象としてマークする。
+        /// </summary>
+        private void HandleSaccadeStarted()
+        {
+            if (Time.time - currentShotExecutionTime >= 0.08f)
+            {
+                eligibleForBallHide = true;
+            }
+        }
+
+        /// <summary>
+        /// サッカード終了時のハンドラー。
+        /// eligibleForBallHide が true で、かつそのショットではまだ処理を行っていなければ、ボールを100ms非表示にする。
+        /// </summary>
+        private void HandleSaccadeEnded()
+        {
+            if (!eligibleForBallHide || ballHiddenForCurrentShot)
+                return;
+
+            var ballStateManager = FindObjectOfType<BallStateManager>();
+            if (ballStateManager != null)
+            {
+                currentBallRenderer = ballStateManager.gameObject.GetComponent<MeshRenderer>();
+                if (currentBallRenderer != null)
+                {
+                    ballHiddenForCurrentShot = true;
+                    StartCoroutine(HideBallTemporarily());
+                }
+            }
+        }
+
+        // ボールを消す確率
+        public float hideBallProbability = 0.5f;
+
+        /// <summary>
+        /// ボールのレンダラーを無効化して100ms後に再度有効化するコルーチン。
+        /// </summary>
+        private IEnumerator HideBallTemporarily()
+        {
+            if (currentBallRenderer == null)
+                yield break;
+
+            if (hideBallProbability < UnityEngine.Random.value)
+                yield break;
+            currentBallRenderer.enabled = false; // 非表示
+            yield return new WaitForSeconds(0.1f); // 100ms待機
+            if (currentBallRenderer != null)
+                currentBallRenderer.enabled = true; // 表示に戻す
+        }
+
+        #endregion
+
+        #region Session Management
 
         public async Task<bool> PrepareNewSession()
         {
@@ -162,23 +267,14 @@ namespace StepUpTableTennis.Training
             {
                 var sessionId = SessionId.Generate();
                 var config = new SessionConfig(
-                    new SessionDifficulty(
-                        difficultySettings.SpeedLevel,
-                        difficultySettings.SpinLevel,
-                        difficultySettings.CourseLevel
-                    ),
+                    new SessionDifficulty(difficultySettings.SpeedLevel, difficultySettings.SpinLevel, difficultySettings.CourseLevel),
                     shotsPerSession,
                     shotInterval
                 );
 
                 var shots = await GenerateAndCalculateShots(config);
 
-                currentSession = new TrainingSession(
-                    sessionId,
-                    DateTime.Now,
-                    config,
-                    shots
-                );
+                currentSession = new TrainingSession(sessionId, DateTime.Now, config, shots);
 
                 motionRecorder.StartSession(currentSession.Shots);
 
@@ -214,7 +310,6 @@ namespace StepUpTableTennis.Training
             NextShotTime = Time.time; // 最初のショットはすぐに発射
 
             Debug.Log($"Started new session: {currentSession.Id.Value}");
-
             onSessionStart?.Invoke();
         }
 
@@ -237,9 +332,152 @@ namespace StepUpTableTennis.Training
         {
             if (isSessionActive || currentSession == null) return;
             isSessionActive = true;
-            NextShotTime = Time.time; // 再開時に次のショット時間をリセット
+            NextShotTime = Time.time; // 再開時に次のショットタイミングをリセット
             onSessionResume?.Invoke();
         }
+
+        /// <summary>
+        /// セッションが完了しているかチェックし、完了していればセッションを終了する。
+        /// </summary>
+        private void CheckSessionCompletion()
+        {
+            if (currentSession != null && currentShotIndex >= currentSession.Shots.Count && Time.time > NextShotTime + 1f)
+            {
+                Debug.Log($"Session completed. Total shots: {totalExecutedShots}, Successful: {successfulShots}");
+                StopSession();
+            }
+        }
+
+        private async void CompleteSession()
+        {
+            if (currentSession == null) return;
+
+            motionRecorder.StopSession();
+
+            var statistics = new SessionStatistics(totalExecutedShots, successfulShots, DateTime.Now);
+            currentSession.Complete(statistics);
+
+            try
+            {
+                await dataStorage.SaveSessionAsync(currentSession);
+                Debug.Log($"Session data saved successfully: {currentSession.Id.Value}");
+
+                float successRate = totalExecutedShots > 0 ? (float)successfulShots / totalExecutedShots * 100f : 0f;
+                onSessionStatistics?.Invoke(successfulShots, totalExecutedShots, successRate);
+                onSessionComplete?.Invoke();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to save session data: {e.Message}");
+            }
+
+            ResetSessionState();
+        }
+
+        private void ResetSessionState()
+        {
+            ballSpawner?.DestroyAllBalls();
+            currentSession = null;
+            currentShotIndex = 0;
+            successfulShots = 0;
+            totalExecutedShots = 0;
+            isSessionActive = false;
+            NextShotTime = float.MaxValue;
+
+            // 連続衝突検出用のデータもリセット
+            collisionCounts.Clear();
+        }
+
+        public (int successfulShots, int totalShots, float successRate) GetCurrentStatistics()
+        {
+            float successRate = totalExecutedShots > 0 ? (float)successfulShots / totalExecutedShots * 100f : 0f;
+            return (successfulShots, totalExecutedShots, successRate);
+        }
+
+        #endregion
+
+        #region Shot Execution
+
+        private async Task<List<TrainingShot>> GenerateAndCalculateShots(SessionConfig config)
+        {
+            var shots = new List<TrainingShot>();
+            var calculator = new BallTrajectoryCalculator(physicsSettings);
+
+            for (int i = 0; i < config.TotalShots; i++)
+            {
+                var parameters = GenerateShotParameters(config.Difficulty);
+                var calculatedParams = await calculator.CalculateTrajectoryAsync(parameters);
+                var shot = new TrainingShot(calculatedParams);
+                shots.Add(shot);
+
+                lastLaunchPosition = calculatedParams.LaunchPosition;
+                lastBounceTargetPosition = calculatedParams.AimPosition;
+                hasLastShotParameters = true;
+            }
+
+            return shots;
+        }
+
+        private ShotParameters GenerateShotParameters(SessionDifficulty difficulty)
+        {
+            if (ballLauncher == null)
+                throw new InvalidOperationException("BallLauncher reference not set!");
+
+            Vector3 launchPosition = difficultySettings.GetLaunchPosition();
+            Vector3 bounceTargetPosition = difficultySettings.GetRandomBouncePosition();
+
+            float speed = difficultySettings.GetSpeedForLevel();
+            var spin = difficultySettings.GetSpinForLevel();
+
+            ShotParameters shotParameters = new ShotParameters(
+                launchPosition,
+                bounceTargetPosition,
+                speed,
+                spin.RotationsPerSecond,
+                spin.SpinAxis
+            );
+
+            Debug.Log($"Generated Shot: Launch={launchPosition}, Bounce={bounceTargetPosition}, Speed={speed:F2}m/s, Spin={spin.RotationsPerSecond} rps, Axis={spin.SpinAxis}");
+            return shotParameters;
+        }
+
+        private void ExecuteNextShot()
+        {
+            if (currentShotIndex >= currentSession.Shots.Count)
+                return;
+
+            // 新しいショット開始時に、各種フラグをリセットし、発射時刻を記録
+            ballHiddenForCurrentShot = false;
+            eligibleForBallHide = false;
+            currentBallRenderer = null;
+            currentShotExecutionTime = Time.time;
+
+            var shot = currentSession.Shots[currentShotIndex];
+            var parameters = shot.Parameters;
+
+            if (!parameters.IsCalculated)
+            {
+                Debug.LogError("Shot parameters have not been calculated");
+                return;
+            }
+
+            ballSpawner.SpawnBall(parameters.LaunchPosition, parameters.InitialVelocity.Value, parameters.InitialAngularVelocity.Value);
+            shot.RecordExecution(DateTime.Now, false);
+            motionRecorder.SetCurrentShot(currentShotIndex);
+
+            lastLaunchPosition = parameters.LaunchPosition;
+            lastBounceTargetPosition = parameters.AimPosition;
+            hasLastShotParameters = true;
+
+            currentShotIndex++;
+            NextShotTime = Time.time + shotInterval;
+        }
+
+        #endregion
+
+        #region Collision and Haptics Handling
+
+        public event Action<CollisionEventArgs> OnCollisionOccurred;
 
         private void InitializeComponents()
         {
@@ -254,213 +492,36 @@ namespace StepUpTableTennis.Training
             if (paddleStateHandler != null && paddleStateHandler.Paddle != null)
                 physicsEngine.AddPaddle(paddleStateHandler.Paddle);
 
-            motionRecorder = new MotionRecorder(
-                paddleStateHandler,
-                headTransform ?? Camera.main?.transform
-            );
+            motionRecorder = new MotionRecorder(paddleStateHandler, headTransform ?? Camera.main?.transform);
 
-            if (ballSpawner != null)
-                ballSpawner.Initialize(physicsEngine, motionRecorder);
+            ballSpawner?.Initialize(physicsEngine, motionRecorder);
+            physicsDebugger?.Initialize(physicsEngine);
 
-            if (physicsDebugger != null)
-                physicsDebugger.Initialize(physicsEngine);
-
-            dataStorage = new TrainingDataStorage(
-                Path.Combine(Application.persistentDataPath, "TrainingData")
-            );
+            dataStorage = new TrainingDataStorage(Path.Combine(Application.persistentDataPath, "TrainingData"));
 
             physicsEngine.OnCollision += HandleCollision;
             physicsEngine.OnCollision += args => OnCollisionOccurred?.Invoke(args);
-            
-            // --- ここから追加 ---
-            // 衝突時のハプティクス処理を追加
             physicsEngine.OnCollision += HandleHapticsOnCollision;
-            // --- ここまで追加 ---
         }
-        
+
         private void HandleHapticsOnCollision(CollisionEventArgs args)
         {
             if (args.CollisionInfo.Type == CollisionInfo.CollisionType.BallPaddle)
             {
-                // 衝突強度を計算
                 float impactForce = args.CollisionInfo.GetImpactForce(physicsSettings);
                 Debug.Log("Collision occurred: " + impactForce);
-
-                // impactForceはある程度の範囲に正規化した方がよい
-                // 例：最大値を仮に100N程度と想定して0～1に正規化
                 float normalizedForce = Mathf.Clamp01(impactForce / 10f);
-
-                // normalizedForceに応じてハプティクス強度を決定
-                float amplitude = normalizedForce; // 0～1
-                float duration = 0.1f + 0.2f * normalizedForce; // 衝突が大きいほど長く振動
+                float amplitude = normalizedForce;
+                float duration = 0.1f + 0.2f * normalizedForce;
                 player.amplitude = amplitude;
-
-                // ハプティクスを再生
                 player.Play(Controller.Right);
             }
         }
 
-        private async Task<List<TrainingShot>> GenerateAndCalculateShots(SessionConfig config)
-        {
-            var shots = new List<TrainingShot>();
-            var calculator = new BallTrajectoryCalculator(physicsSettings);
-
-            for (var i = 0; i < config.TotalShots; i++)
-            {
-                var parameters = GenerateShotParameters(config.Difficulty);
-                var calculatedParams = await calculator.CalculateTrajectoryAsync(parameters);
-                var shot = new TrainingShot(calculatedParams);
-                shots.Add(shot);
-
-                // これらの行を保持
-                lastLaunchPosition = calculatedParams.LaunchPosition;
-                lastBounceTargetPosition = calculatedParams.AimPosition;
-                hasLastShotParameters = true;
-            }
-
-            return shots;
-        }
-        
-        public bool TryGetLastShotParameters(out Vector3 launchPos, out Vector3 bouncePos)
-        {
-            if (hasLastShotParameters)
-            {
-                launchPos = lastLaunchPosition;
-                bouncePos = lastBounceTargetPosition;
-                return true;
-            }
-
-            launchPos = Vector3.zero;
-            bouncePos = Vector3.zero;
-            return false;
-        }
-
-        private ShotParameters GenerateShotParameters(SessionDifficulty difficulty)
-        {
-            if (ballLauncher == null)
-                throw new InvalidOperationException("BallLauncher reference not set!");
-
-            var launchPosition = difficultySettings.GetLaunchPosition();
-            var bounceTargetPosition = difficultySettings.GetRandomBouncePosition();
-
-            var speed = difficultySettings.GetSpeedForLevel();
-            var spin = difficultySettings.GetSpinForLevel();
-
-            var shotParameters = new ShotParameters(
-                launchPosition,
-                bounceTargetPosition,
-                speed,
-                spin.RotationsPerSecond,
-                spin.SpinAxis
-            );
-
-            Debug.Log(
-                $"Generated Shot: Launch={launchPosition}, " +
-                $"Bounce={bounceTargetPosition}, " +
-                $"Speed={speed:F2}m/s, " +
-                $"Spin={spin.RotationsPerSecond} rps, " +
-                $"Axis={spin.SpinAxis}"
-            );
-
-            return shotParameters;
-        }
-
-        private void ExecuteNextShot()
-        {
-            if (currentShotIndex >= currentSession.Shots.Count)
-                return;
-
-            var shot = currentSession.Shots[currentShotIndex];
-            var parameters = shot.Parameters;
-
-            if (!parameters.IsCalculated)
-            {
-                Debug.LogError("Shot parameters have not been calculated");
-                return;
-            }
-
-            ballSpawner.SpawnBall(
-                parameters.LaunchPosition,
-                parameters.InitialVelocity.Value,
-                parameters.InitialAngularVelocity.Value
-            );
-
-            shot.RecordExecution(DateTime.Now, false);
-            motionRecorder.SetCurrentShot(currentShotIndex);
-
-            lastLaunchPosition = parameters.LaunchPosition;
-            lastBounceTargetPosition = parameters.AimPosition;
-            hasLastShotParameters = true;
-
-            currentShotIndex++;
-            NextShotTime = Time.time + shotInterval;
-        }
-
-
-        private void CheckSessionCompletion()
-        {
-            if (currentShotIndex >= currentSession.Shots.Count && Time.time > NextShotTime + 1f)
-            {
-                Debug.Log($"Session completed. Total shots: {totalExecutedShots}, Successful: {successfulShots}");
-                StopSession();
-            }
-        }
-
-        private async void CompleteSession()
-        {
-            if (currentSession == null) return;
-
-            motionRecorder.StopSession();
-
-            var statistics = new SessionStatistics(
-                totalExecutedShots,
-                successfulShots,
-                DateTime.Now
-            );
-
-            currentSession.Complete(statistics);
-
-            try
-            {
-                await dataStorage.SaveSessionAsync(currentSession);
-                Debug.Log($"Session data saved successfully: {currentSession.Id.Value}");
-
-                var successRate = totalExecutedShots > 0 ? (float)successfulShots / totalExecutedShots * 100f : 0f;
-                onSessionStatistics?.Invoke(successfulShots, totalExecutedShots, successRate);
-                onSessionComplete?.Invoke();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to save session data: {e.Message}");
-            }
-
-            ResetSessionState();
-        }
-
-        public (int successfulShots, int totalShots, float successRate) GetCurrentStatistics()
-        {
-            var successRate = totalExecutedShots > 0 ? (float)successfulShots / totalExecutedShots * 100f : 0f;
-            return (successfulShots, totalExecutedShots, successRate);
-        }
-
-        private void ResetSessionState()
-        {
-            if (ballSpawner != null)
-                ballSpawner.DestroyAllBalls();
-
-            currentSession = null;
-            currentShotIndex = 0;
-            successfulShots = 0;
-            totalExecutedShots = 0;
-            isSessionActive = false;
-            NextShotTime = float.MaxValue; // リセット時は十分大きな値に
-        }
-
         private void HandleCollision(CollisionEventArgs args)
         {
-            if (args.CollisionInfo.Type == CollisionInfo.CollisionType.BallPaddle
-                && currentShotIndex > 0
-                && currentShotIndex <= currentSession.Shots.Count)
+            if (args.CollisionInfo.Type == CollisionInfo.CollisionType.BallPaddle &&
+                currentShotIndex > 0 && currentShotIndex <= currentSession.Shots.Count)
             {
                 var shot = currentSession.Shots[currentShotIndex - 1];
                 shot.WasSuccessful = true;
@@ -469,8 +530,49 @@ namespace StepUpTableTennis.Training
                 if (removeBalLAfterPaddleHit && args.CollisionInfo.Ball != null)
                     args.CollisionInfo.Ball.AddForce(Vector3.down * ballRemovalForce);
             }
-        }
 
+            // ネットまたはテーブルとの衝突をチェック
+            if (args.CollisionInfo.Type == CollisionInfo.CollisionType.BallTable || args.CollisionInfo.Type == CollisionInfo.CollisionType.BallBox)
+            {
+                Ball ball = args.CollisionInfo.Ball;
+                float currentTime = Time.time;
+
+                if (collisionCounts.ContainsKey(ball.Id))
+                {
+                    // 既存のエントリがある場合
+                    (int count, float lastCollisionTime) = collisionCounts[ball.Id];
+
+                    if (currentTime - lastCollisionTime <= continuousCollisionThreshold)
+                    {
+                        // 連続衝突とみなす
+                        count++;
+                        if (count >= requiredCollisionCount)
+                        {
+                            // ボールを消去: DestroyBall を使用
+                            Debug.Log("Continuous collision detected. Removing ball.");
+                            ballSpawner.DestroyBall(ball);
+                            collisionCounts.Remove(ball.Id); // エントリを削除
+                        }
+                        else
+                        {
+                            // カウントを更新
+                            collisionCounts[ball.Id] = (count, currentTime);
+                        }
+                    }
+                    else
+                    {
+                        // 時間閾値を超えた場合はリセット
+                        collisionCounts[ball.Id] = (1, currentTime);
+                    }
+                }
+                else
+                {
+                    // 新しいエントリを追加
+                    collisionCounts.Add(ball.Id, (1, currentTime));
+                }
+            }
+        }
+      
         private void ValidateComponents()
         {
             if (physicsSettings == null)
@@ -490,37 +592,11 @@ namespace StepUpTableTennis.Training
 
             if (paddleStateHandler == null)
                 paddleStateHandler = FindObjectOfType<PaddleSetup>();
+
+            if (saccadeDetector == null)
+                saccadeDetector = GetComponent<SaccadeDetector>();
         }
 
-        private void OnDestroy()
-        {
-            if (physicsEngine != null)
-            {
-                if (tableCollider != null)
-                    physicsEngine.RemoveBoxCollider(tableCollider);
-
-                if (netCollider != null)
-                    physicsEngine.RemoveBoxCollider(netCollider);
-            }
-        }
-
-        // --- ここから追加 ---
-        // OnDrawGizmosで、最後に生成したショットの発射地点とターゲット地点を可視化
-        private void OnDrawGizmos()
-        {
-            if (hasLastShotParameters)
-            {
-                Gizmos.color = aimLineColor;
-                // 発射地点からターゲット地点へライン
-                Gizmos.DrawLine(lastLaunchPosition, lastBounceTargetPosition);
-                // ターゲット地点に球を表示
-                Gizmos.DrawSphere(lastBounceTargetPosition, aimSphereRadius);
-
-                // 発射地点にも小さな球を描いてわかりやすくする
-                Gizmos.color = Color.cyan;
-                Gizmos.DrawSphere(lastLaunchPosition, aimSphereRadius * 0.5f);
-            }
-        }
-        // --- ここまで追加 ---
+        #endregion
     }
 }

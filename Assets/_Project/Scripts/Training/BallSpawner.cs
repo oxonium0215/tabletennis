@@ -1,8 +1,10 @@
+// BallSpawner.cs
 using StepUpTableTennis.DataManagement.Recording;
 using StepUpTableTennis.TableTennisEngine.Core;
 using StepUpTableTennis.TableTennisEngine.Objects;
 using StepUpTableTennis.TableTennisEngine.Visualization;
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace StepUpTableTennis.Training
 {
@@ -11,6 +13,9 @@ namespace StepUpTableTennis.Training
         [SerializeField] private GameObject ballVisualizerPrefab;
         private IMotionRecorder motionRecorder;
         private TableTennisPhysics physicsEngine;
+
+        // BallStateManager と Ball のペアを管理する Dictionary
+        private Dictionary<Ball, BallStateManager> ballMap = new Dictionary<Ball, BallStateManager>();
 
         public void Initialize(TableTennisPhysics engine, IMotionRecorder recorder)
         {
@@ -33,6 +38,9 @@ namespace StepUpTableTennis.Training
                 stateManager.Initialize(ball, position);
                 // 新しく生成したボールをモーションレコーダーに通知
                 motionRecorder?.TrackBall(stateManager);
+
+                // Ball と BallStateManager を Dictionary に追加
+                ballMap.Add(ball, stateManager);
             }
             else
             {
@@ -48,10 +56,34 @@ namespace StepUpTableTennis.Training
             return ball;
         }
 
+        // 特定のボールを破棄するメソッド
+        public void DestroyBall(Ball ball)
+        {
+            if (ballMap.ContainsKey(ball))
+            {
+                // BallStateManager を破棄
+                Destroy(ballMap[ball].gameObject);
+
+                // Dictionary から削除
+                ballMap.Remove(ball);
+
+                // TableTennisPhysics からも Ball を削除
+                physicsEngine?.RemoveBall(ball);
+
+            }
+        }
+
+        // 既存の DestroyAllBalls() は残しておいても良いし、必要なければ削除しても良い
         public void DestroyAllBalls()
         {
-            var visualizers = FindObjectsOfType<BallStateManager>();
-            foreach (var visualizer in visualizers) Destroy(visualizer.gameObject);
+            foreach (var visualizer in FindObjectsOfType<BallStateManager>())
+            {
+                Destroy(visualizer.gameObject);
+            }
+            ballMap.Clear();
+
+            // 物理エンジンからもすべてのボールを削除 (必要に応じて)
+            physicsEngine?.ClearBalls();  // このメソッドは TableTennisPhysics に追加する必要がある
         }
     }
 }

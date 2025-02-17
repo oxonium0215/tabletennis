@@ -1,3 +1,4 @@
+// TableTennisPhysics.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -77,7 +78,7 @@ namespace StepUpTableTennis.TableTennisEngine.Core
                         OnCollision?.Invoke(new CollisionEventArgs(collisionInfo));
                     }
                 }
-                
+
                 var recentCollisions = collisionSystem.CurrentFrameCollisions;
                 foreach (var collisionInfo in recentCollisions)
                 {
@@ -95,27 +96,20 @@ namespace StepUpTableTennis.TableTennisEngine.Core
         {
             boxColliders.Remove(collider);
         }
-        
+
+        public void RemoveBall(Ball ball)
+        {
+            balls.Remove(ball);
+        }
+
+        public void ClearBalls()
+        {
+            balls.Clear();
+        }
+
         public IEnumerable<CollisionInfo> GetRecentCollisions()
         {
             return collisionSystem.CurrentFrameCollisions;
-        }
-
-        public List<Vector3> PredictTrajectory(Ball ball, float duration)
-        {
-            var positions = new List<Vector3>();
-            var predictionBall = new Ball();
-            predictionBall.Initialize(Settings);
-            predictionBall.ResetState(ball.Position, ball.Velocity, ball.Spin);
-
-            var steps = Mathf.CeilToInt(duration / Settings.TimeStep);
-            for (var i = 0; i < steps; i++)
-            {
-                predictionBall.UpdatePhysics(Settings.TimeStep, Settings);
-                positions.Add(predictionBall.Position);
-            }
-
-            return positions;
         }
 
         // デバッグ用のメソッド
@@ -133,6 +127,24 @@ namespace StepUpTableTennis.TableTennisEngine.Core
         public Table GetFirstTable()
         {
             return tables.FirstOrDefault();
+        }
+
+        // 軌道予測メソッド (ここに追加)
+        public List<Vector3> PredictTrajectory(Ball ball, float duration)
+        {
+            var positions = new List<Vector3>();
+            var predictionBall = new Ball();
+            predictionBall.Initialize(Settings);
+            predictionBall.ResetState(ball.Position, ball.Velocity, ball.Spin);
+
+            var steps = Mathf.CeilToInt(duration / Settings.TimeStep);
+            for (var i = 0; i < steps; i++)
+            {
+                predictionBall.UpdatePhysics(Settings.TimeStep, Settings);
+                positions.Add(predictionBall.Position);
+            }
+
+            return positions;
         }
     }
 }
