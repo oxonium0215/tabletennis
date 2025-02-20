@@ -28,7 +28,7 @@ namespace StepUpTableTennis.DataManagement.Storage
                     new Vector2JsonConverter(),
                     new Vector3JsonConverter(),
                     new QuaternionJsonConverter(),
-                    new FloatJsonConverter() // 新しいコンバーター
+                    new FloatJsonConverter()
                 }
             };
 
@@ -43,7 +43,6 @@ namespace StepUpTableTennis.DataManagement.Storage
             Directory.CreateDirectory(sessionDir);
             Directory.CreateDirectory(shotsDir);
 
-            // セッション基本情報の保存
             var sessionInfo = new StoredSessionInfo
             {
                 Id = session.Id.Value,
@@ -52,17 +51,10 @@ namespace StepUpTableTennis.DataManagement.Storage
                 Statistics = session.Statistics
             };
 
-            await SaveJsonAsync(
-                Path.Combine(sessionDir, "session.json"),
-                sessionInfo
-            );
+            await SaveJsonAsync(Path.Combine(sessionDir, "session.json"), sessionInfo);
 
-            // 各ショットの保存
             for (var i = 0; i < session.Shots.Count; i++)
-                await SaveShotAsync(
-                    Path.Combine(shotsDir, $"{i}.json"),
-                    session.Shots[i]
-                );
+                await SaveShotAsync(Path.Combine(shotsDir, $"{i}.json"), session.Shots[i]);
         }
 
         public async Task<TrainingSession> LoadSessionAsync(SessionId sessionId)
@@ -74,13 +66,11 @@ namespace StepUpTableTennis.DataManagement.Storage
             if (!File.Exists(sessionPath))
                 throw new FileNotFoundException($"Session {sessionId.Value} not found");
 
-            // セッション基本情報の読み込み
             var sessionInfo = await LoadJsonAsync<StoredSessionInfo>(sessionPath);
 
-            // ショットデータの読み込み
             var shots = new List<TrainingShot>();
             var shotFiles = Directory.GetFiles(shotsDir, "*.json");
-            Array.Sort(shotFiles); // ファイル名で順序を保証
+            Array.Sort(shotFiles);
 
             foreach (var shotFile in shotFiles)
             {
@@ -88,7 +78,6 @@ namespace StepUpTableTennis.DataManagement.Storage
                 shots.Add(shot);
             }
 
-            // TrainingSessionの再構築
             var session = new TrainingSession(
                 sessionId,
                 sessionInfo.StartTime,
@@ -96,14 +85,14 @@ namespace StepUpTableTennis.DataManagement.Storage
                 shots
             );
 
-            if (sessionInfo.Statistics != null) session.Complete(sessionInfo.Statistics);
+            if (sessionInfo.Statistics != null)
+                session.Complete(sessionInfo.Statistics);
 
             return session;
         }
 
         private void SanitizeMotionData(MotionRecordData data)
         {
-            // 無限大や非数値をチェックして置き換える
             if (float.IsInfinity(data.Velocity.x) || float.IsNaN(data.Velocity.x))
                 data.Velocity = Vector3.zero;
             if (float.IsInfinity(data.AngularVelocity.x) || float.IsNaN(data.AngularVelocity.x))
@@ -112,7 +101,7 @@ namespace StepUpTableTennis.DataManagement.Storage
 
         private async Task SaveShotAsync(string path, TrainingShot shot)
         {
-            // データのサニタイズ
+            // サニタイズ
             foreach (var motionData in shot.BallMotionData)
                 SanitizeMotionData(motionData);
             foreach (var motionData in shot.RacketMotionData)
@@ -123,6 +112,7 @@ namespace StepUpTableTennis.DataManagement.Storage
                 Parameters = shot.Parameters,
                 ExecutedAt = shot.ExecutedAt,
                 WasSuccessful = shot.WasSuccessful,
+                // 型を MotionRecordData から BallMotionRecordData に変更
                 BallMotionData = shot.BallMotionData,
                 RacketMotionData = shot.RacketMotionData,
                 HeadMotionData = shot.HeadMotionData,
@@ -141,7 +131,6 @@ namespace StepUpTableTennis.DataManagement.Storage
             if (storedShot.ExecutedAt.HasValue)
                 shot.RecordExecution(storedShot.ExecutedAt.Value, storedShot.WasSuccessful ?? false);
 
-            // 記録データの復元
             shot.BallMotionData.AddRange(storedShot.BallMotionData);
             shot.RacketMotionData.AddRange(storedShot.RacketMotionData);
             shot.HeadMotionData.AddRange(storedShot.HeadMotionData);
@@ -172,7 +161,6 @@ namespace StepUpTableTennis.DataManagement.Storage
             Directory.CreateDirectory(Path.Combine(baseDirectory, "Sessions"));
         }
 
-        // 保存用のデータ構造
         private class StoredSessionInfo
         {
             public string Id { get; set; }
@@ -186,14 +174,14 @@ namespace StepUpTableTennis.DataManagement.Storage
             public ShotParameters Parameters { get; set; }
             public DateTime? ExecutedAt { get; set; }
             public bool? WasSuccessful { get; set; }
-            public List<MotionRecordData> BallMotionData { get; set; }
+            // BallMotionData の型変更に合わせる
+            public List<StepUpTableTennis.DataManagement.Core.Models.BallMotionRecordData> BallMotionData { get; set; }
             public List<MotionRecordData> RacketMotionData { get; set; }
             public List<MotionRecordData> HeadMotionData { get; set; }
             public List<GazeRecordData> GazeData { get; set; }
         }
     }
 
-    // UnityのデータTYpe用のJsonConverter
     public class Vector2JsonConverter : JsonConverter<Vector2>
     {
         public override Vector2 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -266,7 +254,7 @@ namespace StepUpTableTennis.DataManagement.Storage
         public override void Write(Utf8JsonWriter writer, float value, JsonSerializerOptions options)
         {
             if (float.IsInfinity(value) || float.IsNaN(value))
-                writer.WriteNumberValue(0f); // 無効な値を0に置き換え
+                writer.WriteNumberValue(0f);
             else
                 writer.WriteNumberValue(value);
         }

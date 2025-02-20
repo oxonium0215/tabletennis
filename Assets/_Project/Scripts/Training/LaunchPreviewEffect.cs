@@ -23,7 +23,7 @@ namespace StepUpTableTennis.Training
         private void Start()
         {
             if (sessionManager == null)
-                sessionManager = FindObjectOfType<TrainingSessionManager>();
+                sessionManager = FindFirstObjectByType<TrainingSessionManager>();
                 
             CreateEffectSphere();
             

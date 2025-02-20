@@ -46,8 +46,8 @@ namespace StepUpTableTennis.Training
                 tableAudioSource.spatialBlend = 1f;
             }
 
-            // イベントリスナーの登録
-            sessionManager.OnCollisionOccurred += HandleCollision;
+            // TrainingSessionManager の OnCollision イベントに登録
+            sessionManager.OnCollision += HandleCollision;
         }
 
         private void HandleCollision(CollisionEventArgs args)
@@ -113,7 +113,7 @@ namespace StepUpTableTennis.Training
             // イベントリスナーの解除
             if (TryGetComponent<TrainingSessionManager>(out var sessionManager))
             {
-                sessionManager.OnCollisionOccurred -= HandleCollision;
+                sessionManager.OnCollision -= HandleCollision;
             }
         }
     }

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using StepUpTableTennis.DataManagement.Core.Models;
 using UnityEngine;
 
@@ -7,14 +8,18 @@ namespace StepUpTableTennis.Playback
 {
     public class PlaybackManager : MonoBehaviour
     {
-        [Header("Components")] [SerializeField]
+        [Header("Components")]
+        [SerializeField]
         private PlaybackVisualizer visualizer;
 
-        [Header("Playback Settings")] [SerializeField]
+        [Header("Playback Settings")]
+        [SerializeField]
         private float defaultPlaybackSpeed = 1f;
+        [SerializeField]
+        private float maxPlaybackSpeed = 3f;
+        [SerializeField]
+        private PlaybackUIController uiController;
 
-        [SerializeField] private float maxPlaybackSpeed = 3f;
-        [SerializeField] private PlaybackUIController uiController;
         private TrainingShot currentShot;
         private float currentTime;
         private bool isPlaying;
@@ -32,7 +37,8 @@ namespace StepUpTableTennis.Playback
 
         private void Update()
         {
-            if (!isPlaying || currentShot == null) return;
+            if (!isPlaying || currentShot == null)
+                return;
 
             currentTime += Time.deltaTime * playbackSpeed;
 
@@ -52,17 +58,16 @@ namespace StepUpTableTennis.Playback
             currentTime = 0f;
             shotDuration = GetShotDuration(shot);
 
-            // ビジュアライザーの初期化を確実に行う
             if (visualizer != null)
             {
                 visualizer.Show();
                 visualizer.ClearTrail();
 
-                // 初期状態を明示的に設定
                 if (shot.BallMotionData.Count > 0)
                 {
                     var initialBallData = shot.BallMotionData[0];
                     visualizer.UpdateBallTransform(initialBallData.Position, initialBallData.Rotation);
+                    visualizer.SetBallVisibility(initialBallData.IsBallVisible);
                 }
             }
             else
@@ -70,8 +75,8 @@ namespace StepUpTableTennis.Playback
                 Debug.LogError("Visualizer is not assigned in PlaybackManager");
             }
 
-            // タイムライン範囲を更新
-            if (uiController != null) uiController.UpdateTimelineRange(0f, shotDuration);
+            if (uiController != null)
+                uiController.UpdateTimelineRange(0f, shotDuration);
         }
 
         private float GetShotDuration(TrainingShot shot)
@@ -79,22 +84,16 @@ namespace StepUpTableTennis.Playback
             if (shot.BallMotionData.Count == 0 && shot.RacketMotionData.Count == 0)
                 return 0f;
 
-            var totalDuration = 0f;
-
-            // ボールの動きの合計時間を計算
+            float totalDuration = 0f;
             if (shot.BallMotionData.Count > 0)
-                // TimeOffsetを累積して合計時間を計算
                 totalDuration = shot.BallMotionData.Sum(data => data.TimeOffset);
-
-            // ラケットの動きの合計時間を計算
             if (shot.RacketMotionData.Count > 0)
             {
-                var racketDuration = shot.RacketMotionData.Sum(data => data.TimeOffset);
+                float racketDuration = shot.RacketMotionData.Sum(data => data.TimeOffset);
                 totalDuration = Mathf.Max(totalDuration, racketDuration);
             }
 
-            Debug.Log(
-                $"Calculated shot duration: {totalDuration} seconds from {shot.BallMotionData.Count} ball records");
+            Debug.Log($"Calculated shot duration: {totalDuration} seconds from {shot.BallMotionData.Count} ball records");
             return totalDuration;
         }
 
@@ -102,32 +101,39 @@ namespace StepUpTableTennis.Playback
         {
             try
             {
-                // ボールの更新
+                // ボールの更新：BallMotionRecordData の補間を使用
                 if (currentShot.BallMotionData.Count > 0)
                 {
-                    var ballData = MotionDataInterpolator.InterpolateMotionData(
-                        currentShot.BallMotionData, time);
+                    var ballData = InterpolateBallMotionData(currentShot.BallMotionData, time);
                     visualizer.UpdateBallTransform(ballData.Position, ballData.Rotation);
+                    visualizer.SetBallVisibility(ballData.IsBallVisible);
                 }
 
-                // パドルの更新
+                // ラケットの更新
                 if (currentShot.RacketMotionData.Count > 0)
                 {
                     var racketData = MotionDataInterpolator.InterpolateMotionData(
                         currentShot.RacketMotionData, time);
-
-                    // パドルの位置と回転を更新
-                    visualizer.UpdateRacketTransform(
-                        racketData.Position,
-                        racketData.Rotation
-                    );
-
-                    // デバッグログを追加
-                    Debug.Log($"Updating paddle - Position: {racketData.Position}, Rotation: {racketData.Rotation}");
+                    visualizer.UpdateRacketTransform(racketData.Position, racketData.Rotation);
                 }
                 else
                 {
                     Debug.LogWarning("No racket motion data available");
+                }
+
+                // 視線の更新
+                if (currentShot.GazeData.Count > 0)
+                {
+                    var gazeData = InterpolateGazeData(currentShot.GazeData, time);
+                    visualizer.UpdateGazeVisualization(
+                        gazeData.LeftEyePosition,
+                        gazeData.LeftEyeDirection,
+                        gazeData.LeftEyeClosedAmount,
+                        gazeData.RightEyePosition,
+                        gazeData.RightEyeDirection,
+                        gazeData.RightEyeClosedAmount
+                    );
+                    visualizer.SetGazeSaccadeState(gazeData.IsSaccade);
                 }
             }
             catch (Exception e)
@@ -139,7 +145,8 @@ namespace StepUpTableTennis.Playback
 
         public void Play()
         {
-            if (currentShot == null) return;
+            if (currentShot == null)
+                return;
             isPlaying = true;
             visualizer.ClearTrail();
         }
@@ -151,7 +158,8 @@ namespace StepUpTableTennis.Playback
 
         public void SetTime(float time)
         {
-            if (currentShot == null) return;
+            if (currentShot == null)
+                return;
 
             currentTime = Mathf.Clamp(time, 0f, shotDuration);
             UpdateVisuals(currentTime);
@@ -172,6 +180,99 @@ namespace StepUpTableTennis.Playback
         public bool IsPlaying()
         {
             return isPlaying;
+        }
+
+        /// <summary>
+        /// BallMotionRecordData 用の線形補間メソッド
+        /// </summary>
+        /// <param name="data">BallMotionRecordData のリスト</param>
+        /// <param name="targetTime">再生開始からの経過時間</param>
+        /// <returns>補間後の BallMotionRecordData</returns>
+        private DataManagement.Core.Models.BallMotionRecordData InterpolateBallMotionData(IReadOnlyList<DataManagement.Core.Models.BallMotionRecordData> data, float targetTime)
+        {
+            if (data == null || data.Count == 0)
+                throw new ArgumentException("No ball motion data available");
+
+            if (data.Count == 1)
+                return data[0];
+
+            float[] cumulativeTime = new float[data.Count];
+            cumulativeTime[0] = data[0].TimeOffset;
+            for (int i = 1; i < data.Count; i++)
+            {
+                cumulativeTime[i] = cumulativeTime[i - 1] + data[i].TimeOffset;
+            }
+
+            int startIndex = -1;
+            for (int i = 0; i < data.Count - 1; i++)
+            {
+                if (cumulativeTime[i] <= targetTime && targetTime <= cumulativeTime[i + 1])
+                {
+                    startIndex = i;
+                    break;
+                }
+            }
+
+            if (startIndex == -1)
+                return targetTime <= cumulativeTime[0] ? data[0] : data[data.Count - 1];
+
+            var a = data[startIndex];
+            var b = data[startIndex + 1];
+            float t = Mathf.InverseLerp(cumulativeTime[startIndex], cumulativeTime[startIndex + 1], targetTime);
+
+            Vector3 pos = Vector3.Lerp(a.Position, b.Position, t);
+            Quaternion rot = Quaternion.Slerp(a.Rotation, b.Rotation, t);
+            Vector3 vel = Vector3.Lerp(a.Velocity, b.Velocity, t);
+            Vector3 angVel = Vector3.Lerp(a.AngularVelocity, b.AngularVelocity, t);
+            bool isVisible = t < 0.5f ? a.IsBallVisible : b.IsBallVisible;
+
+            return new DataManagement.Core.Models.BallMotionRecordData(a.Timestamp, targetTime, pos, rot, vel, angVel, isVisible);
+        }
+
+        /// <summary>
+        /// GazeRecordData の線形補間（既存の実装）
+        /// </summary>
+        private GazeRecordData InterpolateGazeData(IReadOnlyList<GazeRecordData> data, float targetTime)
+        {
+            if (data == null || data.Count == 0)
+                throw new ArgumentException("No gaze data available");
+
+            if (data.Count == 1)
+                return data[0];
+
+            float[] cumulativeTime = new float[data.Count];
+            cumulativeTime[0] = data[0].TimeOffset;
+            for (int i = 1; i < data.Count; i++)
+            {
+                cumulativeTime[i] = cumulativeTime[i - 1] + data[i].TimeOffset;
+            }
+
+            int startIndex = -1;
+            for (int i = 0; i < data.Count - 1; i++)
+            {
+                if (cumulativeTime[i] <= targetTime && targetTime <= cumulativeTime[i + 1])
+                {
+                    startIndex = i;
+                    break;
+                }
+            }
+
+            if (startIndex == -1)
+                return targetTime <= cumulativeTime[0] ? data[0] : data[data.Count - 1];
+
+            var a = data[startIndex];
+            var b = data[startIndex + 1];
+            float t = Mathf.InverseLerp(cumulativeTime[startIndex], cumulativeTime[startIndex + 1], targetTime);
+
+            Vector3 leftEyePos = Vector3.Lerp(a.LeftEyePosition, b.LeftEyePosition, t);
+            Vector3 rightEyePos = Vector3.Lerp(a.RightEyePosition, b.RightEyePosition, t);
+            Vector3 leftEyeDir = Vector3.Lerp(a.LeftEyeDirection, b.LeftEyeDirection, t).normalized;
+            Vector3 rightEyeDir = Vector3.Lerp(a.RightEyeDirection, b.RightEyeDirection, t).normalized;
+            float leftEyeClosed = Mathf.Lerp(a.LeftEyeClosedAmount, b.LeftEyeClosedAmount, t);
+            float rightEyeClosed = Mathf.Lerp(a.RightEyeClosedAmount, b.RightEyeClosedAmount, t);
+            bool isSaccade = t < 0.5f ? a.IsSaccade : b.IsSaccade;
+
+            return new GazeRecordData(a.Timestamp, targetTime, leftEyeDir, rightEyeDir, leftEyePos, rightEyePos, leftEyeClosed, rightEyeClosed, isSaccade);
         }
     }
 }

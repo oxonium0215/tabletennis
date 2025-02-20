@@ -55,6 +55,8 @@ namespace StepUpTableTennis.Training
 
         [Header("Recording Components")]
         [SerializeField] private Transform headTransform;
+        [SerializeField] private OVREyeGaze eyeGaze;
+        [SerializeField] private OVRFaceExpressions faceExpressions;
 
         [Header("Events")]
         public UnityEvent onSessionStart;
@@ -189,7 +191,6 @@ namespace StepUpTableTennis.Training
                 Gizmos.color = aimLineColor;
                 Gizmos.DrawLine(lastLaunchPosition, lastBounceTargetPosition);
                 Gizmos.DrawSphere(lastBounceTargetPosition, aimSphereRadius);
-
                 Gizmos.color = Color.cyan;
                 Gizmos.DrawSphere(lastLaunchPosition, aimSphereRadius * 0.5f);
             }
@@ -220,7 +221,7 @@ namespace StepUpTableTennis.Training
             if (!eligibleForBallHide || ballHiddenForCurrentShot)
                 return;
 
-            var ballStateManager = FindObjectOfType<BallStateManager>();
+            var ballStateManager = FindFirstObjectByType<BallStateManager>();
             if (ballStateManager != null)
             {
                 currentBallRenderer = ballStateManager.gameObject.GetComponent<MeshRenderer>();
@@ -238,7 +239,7 @@ namespace StepUpTableTennis.Training
         /// <summary>
         /// ボールのレンダラーを無効化して100ms後に再度有効化するコルーチン。
         /// </summary>
-        private IEnumerator HideBallTemporarily()
+        private System.Collections.IEnumerator HideBallTemporarily()
         {
             if (currentBallRenderer == null)
                 yield break;
@@ -477,7 +478,7 @@ namespace StepUpTableTennis.Training
 
         #region Collision and Haptics Handling
 
-        public event Action<CollisionEventArgs> OnCollisionOccurred;
+        public event Action<CollisionEventArgs> OnCollision;
 
         private void InitializeComponents()
         {
@@ -492,16 +493,19 @@ namespace StepUpTableTennis.Training
             if (paddleStateHandler != null && paddleStateHandler.Paddle != null)
                 physicsEngine.AddPaddle(paddleStateHandler.Paddle);
 
-            motionRecorder = new MotionRecorder(paddleStateHandler, headTransform ?? Camera.main?.transform);
+            // MotionRecorder の初期化（eyeGaze, faceExpressions, saccadeDetector を渡す）
+            motionRecorder = new MotionRecorder(
+                paddleStateHandler, 
+                headTransform ?? Camera.main?.transform,
+                eyeGaze,
+                faceExpressions,
+                saccadeDetector
+            );
 
             ballSpawner?.Initialize(physicsEngine, motionRecorder);
             physicsDebugger?.Initialize(physicsEngine);
 
             dataStorage = new TrainingDataStorage(Path.Combine(Application.persistentDataPath, "TrainingData"));
-
-            physicsEngine.OnCollision += HandleCollision;
-            physicsEngine.OnCollision += args => OnCollisionOccurred?.Invoke(args);
-            physicsEngine.OnCollision += HandleHapticsOnCollision;
         }
 
         private void HandleHapticsOnCollision(CollisionEventArgs args)
@@ -593,8 +597,19 @@ namespace StepUpTableTennis.Training
             if (paddleStateHandler == null)
                 paddleStateHandler = FindObjectOfType<PaddleSetup>();
 
-            if (saccadeDetector == null)
-                saccadeDetector = GetComponent<SaccadeDetector>();
+            // 追加: eyeGazeのバリデーション
+            if (eyeGaze == null)
+                eyeGaze = FindObjectOfType<OVREyeGaze>();
+
+            // 追加: faceExpressionsのバリデーション
+            if (faceExpressions == null)
+                faceExpressions = FindObjectOfType<OVRFaceExpressions>();
+
+            if (eyeGaze == null)
+                Debug.LogWarning("OVREyeGaze component not found. Eye tracking will be disabled.");
+
+            if (faceExpressions == null)
+                Debug.LogWarning("OVRFaceExpressions component not found. Eye closure tracking will be disabled.");
         }
 
         #endregion

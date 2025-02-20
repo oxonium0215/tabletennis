@@ -6771,7 +6771,9 @@ MonoBehaviour:
   shotInterval: 1
   removeBalLAfterPaddleHit: 1
   ballRemovalForce: 1000
-  headTransform: {fileID: 658276514}
+  headTransform: {fileID: 680599410}
+  eyeGaze: {fileID: 1568052103}
+  faceExpressions: {fileID: 658276515}
   onSessionStart:
     m_PersistentCalls:
       m_Calls: []
@@ -6870,6 +6872,9 @@ MonoBehaviour:
   saccadeHideTime: 0.1
   aimLineColor: {r: 1, g: 0, b: 1, a: 1}
   aimSphereRadius: 0.05
+  continuousCollisionThreshold: 0.5
+  requiredCollisionCount: 2
+  hideBallProbability: 0.5
 --- !u!4 &358347850
 Transform:
   m_ObjectHideFlags: 0
@@ -8602,6 +8607,7 @@ GameObject:
   - component: {fileID: 483815458}
   - component: {fileID: 483815457}
   - component: {fileID: 483815456}
+  - component: {fileID: 483815459}
   m_Layer: 5
   m_Name: PlaybackCanvas
   m_TagString: Untagged
@@ -8743,6 +8749,7 @@ MonoBehaviour:
   paddlePositionOffset: {x: 0.01, y: -0.07, z: -0.09}
   paddleRotationOffset: {x: 319, y: 223.1, z: -31.6}
   showDebugVisuals: 1
+  gazeVisualizer: {fileID: 483815459}
 --- !u!114 &483815457
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8773,6 +8780,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playbackManager: {fileID: 483815457}
   uiController: {fileID: 483815451}
+--- !u!114 &483815459
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 483815450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1d3a1789bb84c428976553fd1828d09, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  leftEyeSphere: {fileID: 6313431695088485096, guid: b6aadba2b46eafb4598a3f70aa22851b, type: 3}
+  rightEyeSphere: {fileID: 6313431695088485096, guid: b6aadba2b46eafb4598a3f70aa22851b, type: 3}
+  leftGazeLine: {fileID: 3308133947656609300, guid: 345bc1ad5ed1415489b4644578cf2368, type: 3}
+  rightGazeLine: {fileID: 3308133947656609300, guid: 345bc1ad5ed1415489b4644578cf2368, type: 3}
+  gazeLineLength: 2
+  openScale: 0.03
+  closedScale: 0.02
+  openColor: {r: 1, g: 1, b: 1, a: 1}
+  closedColor: {r: 0, g: 0, b: 0, a: 1}
+  saccadeColor: {r: 1, g: 0, b: 1, a: 1}
 --- !u!1 &484930227
 GameObject:
   m_ObjectHideFlags: 0
@@ -11320,6 +11349,7 @@ GameObject:
   - component: {fileID: 658276512}
   - component: {fileID: 658276511}
   - component: {fileID: 658276510}
+  - component: {fileID: 658276515}
   m_Layer: 0
   m_Name: '[BuildingBlock] Camera Rig'
   m_TagString: Untagged
@@ -11403,7 +11433,7 @@ MonoBehaviour:
   isInsightPassthroughEnabled: 1
   shouldBoundaryVisibilityBeSuppressed: 0
   requestBodyTrackingPermissionOnStartup: 0
-  requestFaceTrackingPermissionOnStartup: 0
+  requestFaceTrackingPermissionOnStartup: 1
   requestEyeTrackingPermissionOnStartup: 1
   requestScenePermissionOnStartup: 0
   requestRecordAudioPermissionOnStartup: 0
@@ -11470,6 +11500,18 @@ Transform:
   - {fileID: 564845729}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &658276515
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 658276509}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a95044baf65b10c4e89b246d2f881ac9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &660687880
 GameObject:
   m_ObjectHideFlags: 0

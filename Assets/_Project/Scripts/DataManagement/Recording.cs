@@ -21,18 +21,28 @@ namespace StepUpTableTennis.DataManagement.Recording
     {
         private readonly PaddleSetup _paddleStateHandler;
         private readonly Transform headTransform;
+        private readonly OVREyeGaze eyeGaze;
+        private readonly OVRFaceExpressions faceExpressions;
         private readonly float recordingInterval = 1f / 60f; // 60Hz でサンプリング
         private BallStateManager currentBallStateManager;
         private int currentShotIndex = -1;
         private float lastRecordTime;
         private IReadOnlyList<TrainingShot> sessionShots;
+        private OVRPlugin.EyeGazesState eyeGazeState;
+        private readonly SaccadeDetector saccadeDetector; // サッカード検出用
 
         public MotionRecorder(
             PaddleSetup paddleStateHandler,
-            Transform headTransform)
+            Transform headTransform,
+            OVREyeGaze eyeGaze,
+            OVRFaceExpressions faceExpressions,
+            SaccadeDetector saccadeDetector)
         {
             _paddleStateHandler = paddleStateHandler;
             this.headTransform = headTransform;
+            this.eyeGaze = eyeGaze;
+            this.faceExpressions = faceExpressions;
+            this.saccadeDetector = saccadeDetector;
         }
 
         public bool IsRecording => sessionShots != null;
@@ -82,22 +92,29 @@ namespace StepUpTableTennis.DataManagement.Recording
             var timestamp = DateTime.Now;
             var timeOffset = Time.time - lastRecordTime;
 
-            // モーションデータの作成
-            MotionRecordData ballMotion = null;
+            // ボール記録用（BallMotionRecordData を使用）
+            BallMotionRecordData ballMotion = null;
+            // ラケットとヘッドは通常の MotionRecordData を使用
             MotionRecordData racketMotion = null;
             MotionRecordData headMotion = null;
+            GazeRecordData gazeData = null;
 
             // ボールの状態を記録
             if (currentBallStateManager != null && currentBallStateManager.Ball != null)
             {
                 var ballState = currentBallStateManager.Ball;
-                ballMotion = new MotionRecordData(
+                // MeshRenderer の状態を記録する
+                var renderer = currentBallStateManager.gameObject.GetComponent<MeshRenderer>();
+                bool isVisible = renderer != null && renderer.enabled;
+
+                ballMotion = new BallMotionRecordData(
                     timestamp,
                     timeOffset,
                     ballState.Position,
                     ballState.Rotation,
                     ballState.Velocity,
-                    ballState.Spin
+                    ballState.Spin,
+                    isVisible
                 );
             }
 
@@ -122,26 +139,72 @@ namespace StepUpTableTennis.DataManagement.Recording
                     timeOffset,
                     headTransform.position,
                     headTransform.rotation,
-                    Vector3.zero, // 速度は必要に応じて計算
-                    Vector3.zero // 角速度は必要に応じて計算
+                    Vector3.zero,
+                    Vector3.zero
                 );
 
-            // データの記録
-            // 現在のショットが設定されている場合はそこに記録
+            // 視線データの記録
+            if (eyeGaze != null && eyeGaze.EyeTrackingEnabled)
+            {
+                if (!OVRPlugin.GetEyeGazesState(OVRPlugin.Step.Render, -1, ref eyeGazeState))
+                {
+                    return;
+                }
+
+                var leftState = eyeGazeState.EyeGazes[(int)OVRPlugin.Eye.Left];
+                var rightState = eyeGazeState.EyeGazes[(int)OVRPlugin.Eye.Right];
+
+                var leftPose = leftState.Pose.ToOVRPose();
+                var rightPose = rightState.Pose.ToOVRPose();
+
+                var leftWorldPose = leftPose.ToWorldSpacePose(Camera.main);
+                var rightWorldPose = rightPose.ToWorldSpacePose(Camera.main);
+
+                float leftEyeClosed = 0f;
+                float rightEyeClosed = 0f;
+
+                if (faceExpressions != null && faceExpressions.FaceTrackingEnabled)
+                {
+                    leftEyeClosed = faceExpressions.TryGetFaceExpressionWeight(
+                        OVRFaceExpressions.FaceExpression.EyesClosedL, 
+                        out float leftWeight) ? leftWeight : 0f;
+
+                    rightEyeClosed = faceExpressions.TryGetFaceExpressionWeight(
+                        OVRFaceExpressions.FaceExpression.EyesClosedR, 
+                        out float rightWeight) ? rightWeight : 0f;
+                }
+
+                bool isSaccade = saccadeDetector != null && saccadeDetector.IsSaccade;
+
+                gazeData = new GazeRecordData(
+                    timestamp,
+                    timeOffset,
+                    leftWorldPose.orientation * Vector3.forward,
+                    rightWorldPose.orientation * Vector3.forward,
+                    leftWorldPose.position,
+                    rightWorldPose.position,
+                    leftEyeClosed,
+                    rightEyeClosed,
+                    isSaccade
+                );
+            }
+
+            // 記録の追加：BallMotionData のみボールの記録に IsBallVisible を持ち、他は通常 MotionRecordData
             if (currentShotIndex >= 0 && currentShotIndex < sessionShots.Count)
             {
                 var currentShot = sessionShots[currentShotIndex];
                 if (ballMotion != null) currentShot.BallMotionData.Add(ballMotion);
                 if (racketMotion != null) currentShot.RacketMotionData.Add(racketMotion);
                 if (headMotion != null) currentShot.HeadMotionData.Add(headMotion);
+                if (gazeData != null) currentShot.GazeData.Add(gazeData);
             }
-            // 未実行のショットの場合は直前のショットに記録を継続
             else if (currentShotIndex == -1 && sessionShots.Count > 0)
             {
                 var prevShot = sessionShots[0];
                 if (ballMotion != null) prevShot.BallMotionData.Add(ballMotion);
                 if (racketMotion != null) prevShot.RacketMotionData.Add(racketMotion);
                 if (headMotion != null) prevShot.HeadMotionData.Add(headMotion);
+                if (gazeData != null) prevShot.GazeData.Add(gazeData);
             }
         }
     }

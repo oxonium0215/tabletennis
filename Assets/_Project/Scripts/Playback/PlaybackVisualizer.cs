@@ -16,6 +16,9 @@ namespace StepUpTableTennis.Playback
         private GameObject playbackBall;
         private GameObject playbackRacket;
 
+        [Header("Gaze Visualization")]
+        [SerializeField] private GazeVisualizer gazeVisualizer;
+
         private void Awake()
         {
             InitializeVisualObjects();
@@ -35,13 +38,12 @@ namespace StepUpTableTennis.Playback
 
         private void InitializeVisualObjects()
         {
-            // ボールの初期化
-            if (playbackBall == null && ballPrefab != null) playbackBall = Instantiate(ballPrefab);
-
+            if (playbackBall == null && ballPrefab != null)
+                playbackBall = Instantiate(ballPrefab);
             if (playbackRacket == null && racketPrefab != null)
                 playbackRacket = Instantiate(racketPrefab);
-
-            if (ballTrail != null) ballTrail.enabled = showTrail;
+            if (ballTrail != null)
+                ballTrail.enabled = showTrail;
         }
 
         public void UpdateBallTransform(Vector3 position, Quaternion rotation)
@@ -62,11 +64,20 @@ namespace StepUpTableTennis.Playback
 
                 if (showDebugVisuals)
                 {
-                    // デバッグ表示用
                     Debug.DrawLine(position, position + rotation * Vector3.forward * 0.2f, Color.blue);
                     Debug.DrawLine(position, position + rotation * Vector3.up * 0.2f, Color.green);
                     Debug.DrawLine(position, position + rotation * Vector3.right * 0.2f, Color.red);
                 }
+            }
+        }
+
+        public void UpdateGazeVisualization(Vector3 leftEyePos, Vector3 leftEyeDir, float leftEyeClosed,
+                                             Vector3 rightEyePos, Vector3 rightEyeDir, float rightEyeClosed)
+        {
+            if (gazeVisualizer != null)
+            {
+                gazeVisualizer.UpdateGazeData(leftEyePos, leftEyeDir, leftEyeClosed,
+                                                rightEyePos, rightEyeDir, rightEyeClosed);
             }
         }
 
@@ -97,6 +108,35 @@ namespace StepUpTableTennis.Playback
                 playbackBall.SetActive(true);
             if (playbackRacket != null)
                 playbackRacket.SetActive(true);
+        }
+
+        /// <summary>
+        /// 録画時に記録された IsBallVisible の情報をもとに、
+        /// ボールの表示状態を再現します。
+        /// </summary>
+        /// <param name="isVisible">ボールが見えるなら true</param>
+        public void SetBallVisibility(bool isVisible)
+        {
+            if (playbackBall != null)
+            {
+                MeshRenderer renderer = playbackBall.GetComponent<MeshRenderer>();
+                if (renderer != null)
+                {
+                    renderer.enabled = isVisible;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 録画時のサッカード状態をもとに、目線表示に反映します。
+        /// </summary>
+        /// <param name="isSaccade">サッカード中なら true</param>
+        public void SetGazeSaccadeState(bool isSaccade)
+        {
+            if (gazeVisualizer != null)
+            {
+                gazeVisualizer.SetSaccadeState(isSaccade);
+            }
         }
     }
 }

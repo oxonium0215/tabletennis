@@ -64,7 +64,7 @@ namespace StepUpTableTennis.DataManagement.Core.Models
         public float TimeOffset { get; } // セッション開始からの経過時間
     }
 
-    // 物体の動きに関する記録
+    // 物体の動きに関する記録（ラケットやヘッド用）
     public class MotionRecordData : RecordData
     {
         public MotionRecordData(
@@ -87,29 +87,54 @@ namespace StepUpTableTennis.DataManagement.Core.Models
         public Vector3 AngularVelocity { get; set; }
     }
 
+    // ボール専用の動きの記録データ
+    public class BallMotionRecordData : MotionRecordData
+    {
+        public BallMotionRecordData(
+            DateTime timestamp,
+            float timeOffset,
+            Vector3 position,
+            Quaternion rotation,
+            Vector3 velocity,
+            Vector3 angularVelocity,
+            bool isBallVisible) : base(timestamp, timeOffset, position, rotation, velocity, angularVelocity)
+        {
+            IsBallVisible = isBallVisible;
+        }
+
+        public bool IsBallVisible { get; set; }
+    }
+
+    // 視線データの記録構造を修正
     public class GazeRecordData : RecordData
     {
         public GazeRecordData(
             DateTime timestamp,
             float timeOffset,
-            Vector3 direction,
-            float leftEyeOpenness,
-            float rightEyeOpenness,
-            Vector2 leftPupilPosition,
-            Vector2 rightPupilPosition) : base(timestamp, timeOffset)
+            Vector3 leftEyeDirection,
+            Vector3 rightEyeDirection,
+            Vector3 leftEyePosition,
+            Vector3 rightEyePosition,
+            float leftEyeClosedAmount,
+            float rightEyeClosedAmount,
+            bool isSaccade) : base(timestamp, timeOffset)
         {
-            Direction = direction;
-            LeftEyeOpenness = leftEyeOpenness;
-            RightEyeOpenness = rightEyeOpenness;
-            LeftPupilPosition = leftPupilPosition;
-            RightPupilPosition = rightPupilPosition;
+            LeftEyeDirection = leftEyeDirection;
+            RightEyeDirection = rightEyeDirection;
+            LeftEyePosition = leftEyePosition;
+            RightEyePosition = rightEyePosition;
+            LeftEyeClosedAmount = leftEyeClosedAmount;
+            RightEyeClosedAmount = rightEyeClosedAmount;
+            IsSaccade = isSaccade;
         }
 
-        public Vector3 Direction { get; }
-        public float LeftEyeOpenness { get; }
-        public float RightEyeOpenness { get; }
-        public Vector2 LeftPupilPosition { get; }
-        public Vector2 RightPupilPosition { get; }
+        public Vector3 LeftEyeDirection { get; } // 左目の視線方向
+        public Vector3 RightEyeDirection { get; } // 右目の視線方向
+        public Vector3 LeftEyePosition { get; } // 左目の位置
+        public Vector3 RightEyePosition { get; } // 右目の位置
+        public float LeftEyeClosedAmount { get; } // 左目の閉じている度合い (0: 完全に開いている, 1: 完全に閉じている)
+        public float RightEyeClosedAmount { get; } // 右目の閉じている度合い (0: 完全に開いている, 1: 完全に閉じている)
+        public bool IsSaccade { get; } // サッカード状態かどうか
     }
 
     public class TrainingShot
@@ -122,7 +147,8 @@ namespace StepUpTableTennis.DataManagement.Core.Models
         public ShotParameters Parameters { get; }
         public DateTime? ExecutedAt { get; private set; }
         public bool? WasSuccessful { get; set; }
-        public List<MotionRecordData> BallMotionData { get; } = new();
+        // ボールの記録は BallMotionRecordData に限定する
+        public List<BallMotionRecordData> BallMotionData { get; } = new();
         public List<MotionRecordData> RacketMotionData { get; } = new();
         public List<MotionRecordData> HeadMotionData { get; } = new();
         public List<GazeRecordData> GazeData { get; } = new();
@@ -141,15 +167,15 @@ namespace StepUpTableTennis.DataManagement.Core.Models
         {
             switch (data)
             {
+                case BallMotionRecordData ballMotionData:
+                    BallMotionData.Add(ballMotionData);
+                    break;
                 case MotionRecordData motionData:
-                    // ここでは例として、データの種類を識別する方法は
-                    // 呼び出し側で管理することを想定しています
-                    // より良い方法があれば変更可能です
+                    // ラケットやヘッドの記録は個別に追加されるためここでは何もしない
                     break;
                 case GazeRecordData gazeData:
                     GazeData.Add(gazeData);
                     break;
-                // 他のデータ型にも対応可能
             }
         }
     }
