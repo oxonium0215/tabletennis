@@ -6874,6 +6874,9 @@ MonoBehaviour:
   aimSphereRadius: 0.05
   continuousCollisionThreshold: 0.5
   requiredCollisionCount: 2
+  paddleCollisionCooldown: 0.1
+  logCollisions: 1
+  visualizeNormalizedPositions: 1
   hideBallProbability: 1
 --- !u!4 &358347850
 Transform:
@@ -19083,7 +19086,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &1010544057
 BoxCollider:
   m_ObjectHideFlags: 0

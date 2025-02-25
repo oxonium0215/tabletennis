@@ -137,6 +137,29 @@ namespace StepUpTableTennis.DataManagement.Core.Models
         public bool IsSaccade { get; } // サッカード状態かどうか
     }
 
+    // ラケット衝突情報の記録データ
+    public class CollisionRecordData : RecordData
+    {
+        public CollisionRecordData(
+            DateTime timestamp,
+            float timeOffset,
+            Vector3 position,
+            float impactForce,
+            Vector3 normal,
+            Vector2 normalizedPaddlePosition) : base(timestamp, timeOffset)
+        {
+            Position = position;
+            ImpactForce = impactForce;
+            Normal = normal;
+            NormalizedPaddlePosition = normalizedPaddlePosition;
+        }
+
+        public Vector3 Position { get; } // 衝突位置（ワールド座標）
+        public float ImpactForce { get; } // 衝突の強さ
+        public Vector3 Normal { get; } // 衝突法線
+        public Vector2 NormalizedPaddlePosition { get; } // パドル上の正規化された位置 (-1〜1の範囲、中心が(0,0))
+    }
+
     public class TrainingShot
     {
         public TrainingShot(ShotParameters parameters)
@@ -152,6 +175,8 @@ namespace StepUpTableTennis.DataManagement.Core.Models
         public List<MotionRecordData> RacketMotionData { get; } = new();
         public List<MotionRecordData> HeadMotionData { get; } = new();
         public List<GazeRecordData> GazeData { get; } = new();
+        // 衝突記録を保存するリスト
+        public List<CollisionRecordData> CollisionData { get; } = new();
         public bool IsExecuted => ExecutedAt.HasValue;
 
         public void RecordExecution(DateTime executionTime, bool wasSuccessful)
@@ -176,7 +201,25 @@ namespace StepUpTableTennis.DataManagement.Core.Models
                 case GazeRecordData gazeData:
                     GazeData.Add(gazeData);
                     break;
+                case CollisionRecordData collisionData:
+                    CollisionData.Add(collisionData);
+                    break;
             }
+        }
+
+        // 衝突記録を追加するための特定のメソッド（パドル上の正規化された位置も記録）
+        public void AddCollisionRecord(Vector3 position, float impactForce, Vector3 normal, 
+            Vector2 normalizedPaddlePosition, DateTime timestamp, float timeOffset)
+        {
+            var collisionData = new CollisionRecordData(
+                timestamp,
+                timeOffset,
+                position,
+                impactForce,
+                normal,
+                normalizedPaddlePosition
+            );
+            CollisionData.Add(collisionData);
         }
     }
 

@@ -59,6 +59,8 @@ namespace StepUpTableTennis.Playback
         {
             if (playbackRacket != null)
             {
+                // ラケットローカル方向を-0.17だけ下にずらす
+                position -= playbackRacket.transform.up * 0.17f;
                 playbackRacket.transform.position = position;
                 playbackRacket.transform.rotation = rotation;
 

@@ -116,7 +116,9 @@ namespace StepUpTableTennis.DataManagement.Storage
                 BallMotionData = shot.BallMotionData,
                 RacketMotionData = shot.RacketMotionData,
                 HeadMotionData = shot.HeadMotionData,
-                GazeData = shot.GazeData
+                GazeData = shot.GazeData,
+                // 衝突データを追加
+                CollisionData = shot.CollisionData
             };
 
             await SaveJsonAsync(path, storedShot);
@@ -135,6 +137,12 @@ namespace StepUpTableTennis.DataManagement.Storage
             shot.RacketMotionData.AddRange(storedShot.RacketMotionData);
             shot.HeadMotionData.AddRange(storedShot.HeadMotionData);
             shot.GazeData.AddRange(storedShot.GazeData);
+            
+            // 衝突データのロード
+            if (storedShot.CollisionData != null)
+            {
+                shot.CollisionData.AddRange(storedShot.CollisionData);
+            }
 
             return shot;
         }
@@ -179,6 +187,8 @@ namespace StepUpTableTennis.DataManagement.Storage
             public List<MotionRecordData> RacketMotionData { get; set; }
             public List<MotionRecordData> HeadMotionData { get; set; }
             public List<GazeRecordData> GazeData { get; set; }
+            // 衝突データを追加
+            public List<CollisionRecordData> CollisionData { get; set; }
         }
     }
 

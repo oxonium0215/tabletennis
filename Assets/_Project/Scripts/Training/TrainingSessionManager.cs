@@ -1,7 +1,6 @@
 // TrainingSessionManager.cs
 using System;
 using System.Collections;
-//using System.Collections; // 不要なので削除
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -26,6 +25,22 @@ namespace StepUpTableTennis.Training
     [Serializable]
     public class SessionStatisticsEvent : UnityEvent<int, int, float>
     {
+    }
+
+    // 衝突情報を保存するクラスを追加
+    [Serializable]
+    public class CollisionRecordData
+    {
+        public CollisionRecordData(Vector3 position, float impactForce, DateTime timestamp)
+        {
+            Position = position;
+            ImpactForce = impactForce;
+            Timestamp = timestamp;
+        }
+
+        public Vector3 Position { get; }
+        public float ImpactForce { get; }
+        public DateTime Timestamp { get; }
     }
 
     public class TrainingSessionManager : MonoBehaviour
@@ -99,6 +114,22 @@ namespace StepUpTableTennis.Training
         public float continuousCollisionThreshold = 0.5f; // 連続衝突とみなす時間閾値(秒)
         public int requiredCollisionCount = 2; // ボールを消すために必要な衝突回数
 
+        // ラケット衝突防止用の新しいデータ構造
+        private Dictionary<Ball, float> lastPaddleCollisionTimes = new Dictionary<Ball, float>();
+        [Header("Collision Settings")]
+        [SerializeField] private float paddleCollisionCooldown = 0.1f; // ラケットへの連続衝突を無視する時間(秒)
+
+        // 衝突位置の記録用
+        private Dictionary<int, List<CollisionRecordData>> shotCollisionRecords = new Dictionary<int, List<CollisionRecordData>>();
+
+        // デバッグ用
+        [Header("Debug")]
+        [SerializeField] private bool logCollisions = true;
+        [SerializeField] private bool visualizeNormalizedPositions = true;
+
+        // パドル位置の可視化用
+        private List<(Vector2 normalizedPos, float time)> recentPaddleHits = new List<(Vector2, float)>();
+
         #endregion
 
         #region Properties
@@ -166,6 +197,12 @@ namespace StepUpTableTennis.Training
                 ExecuteNextShot();
             }
             CheckSessionCompletion();
+            
+            // 古い衝突記録を削除 (5秒以上経過したものは表示しない)
+            if (visualizeNormalizedPositions)
+            {
+                recentPaddleHits.RemoveAll(hit => Time.time - hit.time > 5f);
+            }
         }
 
         private void OnValidate()
@@ -177,10 +214,21 @@ namespace StepUpTableTennis.Training
         {
             if (physicsEngine != null)
             {
+                // イベント登録解除
+                physicsEngine.OnCollision -= HandleCollision;
+                physicsEngine.OnCollision -= HandleHapticsOnCollision;
+                
                 if (tableCollider != null)
                     physicsEngine.RemoveBoxCollider(tableCollider);
                 if (netCollider != null)
                     physicsEngine.RemoveBoxCollider(netCollider);
+            }
+            
+            // サッカードイベントの登録解除
+            if (saccadeDetector != null)
+            {
+                saccadeDetector.OnSaccadeStarted -= HandleSaccadeStarted;
+                saccadeDetector.OnSaccadeEnded -= HandleSaccadeEnded;
             }
         }
 
@@ -194,6 +242,86 @@ namespace StepUpTableTennis.Training
                 Gizmos.color = Color.cyan;
                 Gizmos.DrawSphere(lastLaunchPosition, aimSphereRadius * 0.5f);
             }
+
+            // 衝突位置の可視化（デバッグ用）
+            DrawCollisionRecords();
+            
+            // パドル上の正規化された位置の可視化
+            if (visualizeNormalizedPositions && paddleStateHandler != null)
+            {
+                DrawNormalizedPaddlePositions();
+            }
+        }
+
+        private void DrawCollisionRecords()
+        {
+            foreach (var records in shotCollisionRecords.Values)
+            {
+                foreach (var record in records)
+                {
+                    Gizmos.color = new Color(1f, 0.5f, 0f, 0.8f); // オレンジ色
+                    Gizmos.DrawSphere(record.Position, 0.01f);
+                    
+                    // 衝突の強さを可視化
+                    float intensity = Mathf.Clamp01(record.ImpactForce / 10f);
+                    Gizmos.color = new Color(1f, intensity, 0f, 0.5f);
+                    Gizmos.DrawRay(record.Position, Vector3.up * (0.05f + intensity * 0.1f));
+                }
+            }
+        }
+        
+        private void DrawNormalizedPaddlePositions()
+        {
+            if (paddleStateHandler == null || paddleStateHandler.Paddle == null)
+                return;
+                
+            var paddle = paddleStateHandler.Paddle;
+            
+            // パドルの位置と回転
+            Vector3 paddlePos = paddle.Position;
+            Quaternion paddleRot = paddle.Rotation;
+            
+            // パドルの大きさ
+            float halfWidth = physicsSettings.PaddleSize.x * 0.5f;
+            float halfHeight = physicsSettings.PaddleSize.y * 0.5f;
+            
+            // パドルの描画（半透明の楕円）
+            Matrix4x4 oldMatrix = Gizmos.matrix;
+            Gizmos.matrix = Matrix4x4.TRS(
+                paddlePos, 
+                paddleRot, 
+                new Vector3(halfWidth * 2f, halfHeight * 2f, 0.01f)
+            );
+            
+            Gizmos.color = new Color(0.2f, 0.2f, 0.8f, 0.3f);
+            Gizmos.DrawSphere(Vector3.zero, 0.5f);
+            
+            // リファレンス線の描画
+            Gizmos.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+            Gizmos.DrawLine(new Vector3(-0.5f, 0, 0), new Vector3(0.5f, 0, 0)); // X軸
+            Gizmos.DrawLine(new Vector3(0, -0.5f, 0), new Vector3(0, 0.5f, 0)); // Y軸
+            
+            // 最近の衝突位置の描画
+            foreach (var hit in recentPaddleHits)
+            {
+                // 経過時間による透明度の調整（古いほど透明に）
+                float age = Time.time - hit.time;
+                float alpha = Mathf.Clamp01(1f - (age / 5f));
+                
+                // 正規化された位置を楕円上の位置に変換
+                Vector3 hitPos = new Vector3(hit.normalizedPos.x * 0.5f, hit.normalizedPos.y * 0.5f, 0);
+                
+                // 衝突点の描画
+                Gizmos.color = new Color(1f, 0.3f, 0.3f, alpha);
+                Gizmos.DrawSphere(hitPos, 0.05f);
+                
+                // 点と中心を結ぶ線
+                Gizmos.color = new Color(0.8f, 0.8f, 0.2f, alpha * 0.7f);
+                Gizmos.DrawLine(Vector3.zero, hitPos);
+            }
+            
+            // 行列を元に戻す
+            Gizmos.matrix = oldMatrix;
         }
 
         #endregion
@@ -283,6 +411,10 @@ namespace StepUpTableTennis.Training
                 successfulShots = 0;
                 totalExecutedShots = 0;
 
+                // 衝突記録を初期化
+                shotCollisionRecords.Clear();
+                recentPaddleHits.Clear();
+                
                 Debug.Log($"Session prepared successfully: {sessionId.Value}");
                 return true;
             }
@@ -385,8 +517,11 @@ namespace StepUpTableTennis.Training
             isSessionActive = false;
             NextShotTime = float.MaxValue;
 
-            // 連続衝突検出用のデータもリセット
+            // 連続衝突検出用のデータをリセット
             collisionCounts.Clear();
+            lastPaddleCollisionTimes.Clear();
+            shotCollisionRecords.Clear();
+            recentPaddleHits.Clear();
         }
 
         public (int successfulShots, int totalShots, float successRate) GetCurrentStatistics()
@@ -462,6 +597,12 @@ namespace StepUpTableTennis.Training
                 return;
             }
 
+            // ショットの衝突記録用のリストを初期化
+            if (!shotCollisionRecords.ContainsKey(currentShotIndex))
+            {
+                shotCollisionRecords[currentShotIndex] = new List<CollisionRecordData>();
+            }
+
             ballSpawner.SpawnBall(parameters.LaunchPosition, parameters.InitialVelocity.Value, parameters.InitialAngularVelocity.Value);
             shot.RecordExecution(DateTime.Now, false);
             motionRecorder.SetCurrentShot(currentShotIndex);
@@ -471,6 +612,7 @@ namespace StepUpTableTennis.Training
             hasLastShotParameters = true;
 
             currentShotIndex++;
+            totalExecutedShots++;
             NextShotTime = Time.time + shotInterval;
         }
 
@@ -506,6 +648,14 @@ namespace StepUpTableTennis.Training
             physicsDebugger?.Initialize(physicsEngine);
 
             dataStorage = new TrainingDataStorage(Path.Combine(Application.persistentDataPath, "TrainingData"));
+
+            // 重要: 物理エンジンの衝突イベントに HandleCollision を登録
+            physicsEngine.OnCollision += HandleCollision;
+            
+            // ハプティクスイベントも登録
+            physicsEngine.OnCollision += HandleHapticsOnCollision;
+            
+            Debug.Log("Collision handlers registered");
         }
 
         private void HandleHapticsOnCollision(CollisionEventArgs args)
@@ -513,7 +663,8 @@ namespace StepUpTableTennis.Training
             if (args.CollisionInfo.Type == CollisionInfo.CollisionType.BallPaddle)
             {
                 float impactForce = args.CollisionInfo.GetImpactForce(physicsSettings);
-                Debug.Log("Collision occurred: " + impactForce);
+                if (logCollisions) Debug.Log($"Haptics collision occurred: Force={impactForce:F2}N");
+                
                 float normalizedForce = Mathf.Clamp01(impactForce / 10f);
                 float amplitude = normalizedForce;
                 float duration = 0.1f + 0.2f * normalizedForce;
@@ -524,21 +675,114 @@ namespace StepUpTableTennis.Training
 
         private void HandleCollision(CollisionEventArgs args)
         {
-            if (args.CollisionInfo.Type == CollisionInfo.CollisionType.BallPaddle &&
-                currentShotIndex > 0 && currentShotIndex <= currentSession.Shots.Count)
-            {
-                var shot = currentSession.Shots[currentShotIndex - 1];
-                shot.WasSuccessful = true;
-                successfulShots++;
+            var collisionInfo = args.CollisionInfo;
+            var ball = collisionInfo.Ball;
+            
+            if (ball == null) return;
+            
+            if (logCollisions) Debug.Log($"Collision detected: Type={collisionInfo.Type}, Ball={ball.Id}");
 
-                if (removeBalLAfterPaddleHit && args.CollisionInfo.Ball != null)
-                    args.CollisionInfo.Ball.AddForce(Vector3.down * ballRemovalForce);
+            // ラケットとの衝突処理
+            if (collisionInfo.Type == CollisionInfo.CollisionType.BallPaddle)
+            {
+                // 連続衝突防止: 同じボールのラケットとの前回衝突からの経過時間をチェック
+                if (lastPaddleCollisionTimes.TryGetValue(ball, out float lastCollisionTime))
+                {
+                    float timeSinceLastCollision = Time.time - lastCollisionTime;
+                    if (timeSinceLastCollision < paddleCollisionCooldown)
+                    {
+                        // クールダウン中なのでこの衝突を無視
+                        if (logCollisions) Debug.Log($"Ignored paddle collision - too soon after last one ({timeSinceLastCollision:F3}s)");
+                        return;
+                    }
+                }
+
+                // パドルおよび衝突点の情報を取得
+                Paddle paddle = collisionInfo.Target as Paddle;
+                if (paddle == null)
+                {
+                    Debug.LogError("Target is not a paddle!");
+                    return;
+                }
+
+                // 衝突点をパドルローカル座標系に変換
+                Vector3 localPos = Quaternion.Inverse(paddle.Rotation) * (collisionInfo.Point - paddle.Position);
+
+                // 楕円面に投影（z座標を0にする）
+                Vector2 projectedLocalPos = new Vector2(localPos.x, localPos.y);
+
+                // パドルサイズで正規化（-1~1の範囲に）
+                Vector2 normalizedPos = new Vector2(
+                    projectedLocalPos.x / (physicsSettings.PaddleSize.x * 0.5f),
+                    projectedLocalPos.y / (physicsSettings.PaddleSize.y * 0.5f)
+                );
+                
+                // 正規化された位置が-1から1の範囲に収まるようにクランプ
+                normalizedPos = new Vector2(
+                    Mathf.Clamp(normalizedPos.x, -1f, 1f),
+                    Mathf.Clamp(normalizedPos.y, -1f, 1f)
+                );
+
+                if (logCollisions) Debug.Log($"Paddle hit at normalized position: ({normalizedPos.x:F2}, {normalizedPos.y:F2})");
+
+                // 可視化用に記録
+                if (visualizeNormalizedPositions)
+                {
+                    recentPaddleHits.Add((normalizedPos, Time.time));
+                }
+
+                // 衝突を記録
+                lastPaddleCollisionTimes[ball] = Time.time;
+
+                // 現在のショットのWasSuccessfulフラグを更新
+                if (currentShotIndex > 0 && currentShotIndex <= currentSession?.Shots?.Count)
+                {
+                    var shot = currentSession.Shots[currentShotIndex - 1];
+                    shot.WasSuccessful = true;
+                    successfulShots++;
+
+                    // 衝突位置と力を記録
+                    float impactForce = collisionInfo.GetImpactForce(physicsSettings);
+                    var collisionRecord = new CollisionRecordData(
+                        collisionInfo.Point,
+                        impactForce,
+                        DateTime.Now
+                    );
+
+                    // ショットに紐づけて記録
+                    int shotIndex = currentShotIndex - 1;
+                    if (!shotCollisionRecords.ContainsKey(shotIndex))
+                    {
+                        shotCollisionRecords[shotIndex] = new List<CollisionRecordData>();
+                    }
+                    shotCollisionRecords[shotIndex].Add(collisionRecord);
+
+                    // TrainingShotの衝突データにも追加
+                    float timeOffset = Time.time - currentShotExecutionTime;
+                    shot.AddCollisionRecord(
+                        collisionInfo.Point, 
+                        impactForce, 
+                        collisionInfo.Normal,
+                        normalizedPos,  // 正規化された位置情報を追加
+                        DateTime.Now, 
+                        timeOffset
+                    );
+
+                    if (logCollisions) Debug.Log($"Recorded paddle collision at {collisionInfo.Point}, force: {impactForce:F2}N, normalized: {normalizedPos}");
+
+                    // ボールの除去設定が有効なら実行
+                    if (removeBalLAfterPaddleHit && ball != null)
+                        ball.AddForce(Vector3.down * ballRemovalForce);
+                }
+                
+                // 外部イベントも発火
+                OnCollision?.Invoke(args);
             }
 
             // ネットまたはテーブルとの衝突をチェック
-            if (args.CollisionInfo.Type == CollisionInfo.CollisionType.BallTable || args.CollisionInfo.Type == CollisionInfo.CollisionType.BallBox)
+            if (collisionInfo.Type == CollisionInfo.CollisionType.BallTable || 
+                collisionInfo.Type == CollisionInfo.CollisionType.BallBox)
             {
-                Ball ball = args.CollisionInfo.Ball;
                 float currentTime = Time.time;
 
                 if (collisionCounts.ContainsKey(ball.Id))
@@ -556,6 +800,12 @@ namespace StepUpTableTennis.Training
                             Debug.Log("Continuous collision detected. Removing ball.");
                             ballSpawner.DestroyBall(ball);
                             collisionCounts.Remove(ball.Id); // エントリを削除
+                            
+                            // ラケット衝突記録も削除
+                            if (lastPaddleCollisionTimes.ContainsKey(ball))
+                            {
+                                lastPaddleCollisionTimes.Remove(ball);
+                            }
                         }
                         else
                         {
@@ -612,6 +862,37 @@ namespace StepUpTableTennis.Training
                 Debug.LogWarning("OVRFaceExpressions component not found. Eye closure tracking will be disabled.");
         }
 
+        #endregion
+        
+        #region Debug Methods
+        
+        [ContextMenu("Debug: Force Collision")]
+        public void DebugForceCollision()
+        {
+            if (physicsEngine == null || logCollisions == false) return;
+            
+            var ball = physicsEngine.GetFirstBall();
+            var paddle = physicsEngine.GetFirstPaddle();
+            
+            if (ball != null && paddle != null)
+            {
+                var collisionInfo = new CollisionInfo(ball, paddle);
+                collisionInfo.Point = paddle.Position + Vector3.up * 0.1f;
+                collisionInfo.Normal = Vector3.up;
+                collisionInfo.Depth = 0.01f;
+                collisionInfo.RelativeVelocity = Vector3.down * 5f;
+                collisionInfo.Type = CollisionInfo.CollisionType.BallPaddle;
+                
+                var args = new CollisionEventArgs(collisionInfo);
+                Debug.Log("Forcing collision for debug purposes");
+                HandleCollision(args);
+            }
+            else
+            {
+                Debug.LogWarning("No ball or paddle found for debug collision");
+            }
+        }
+        
         #endregion
     }
 }
