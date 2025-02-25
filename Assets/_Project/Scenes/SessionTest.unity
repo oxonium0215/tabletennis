@@ -6874,7 +6874,7 @@ MonoBehaviour:
   aimSphereRadius: 0.05
   continuousCollisionThreshold: 0.5
   requiredCollisionCount: 2
-  hideBallProbability: 0.5
+  hideBallProbability: 1
 --- !u!4 &358347850
 Transform:
   m_ObjectHideFlags: 0
