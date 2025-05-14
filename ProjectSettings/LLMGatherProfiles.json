@@ -1,0 +1,51 @@
+{
+    "Profiles": [
+        {
+            "Name": "Default",
+            "Profile": {
+                "ExcludePatterns": [
+                    "Library/**",
+                    "Temp/**",
+                    "Logs/**",
+                    "UserSettings/**",
+                    "obj/**",
+                    "Build/**",
+                    "*.csproj",
+                    "*.sln",
+                    "*.userprefs",
+                    "*.suo",
+                    "**.meta"
+                ],
+                "SkipContentPatterns": [
+                    "*.dll",
+                    "*.asset",
+                    "*.prefab",
+                    "*.unity",
+                    "*.png",
+                    "*.jpg",
+                    "*.tga",
+                    "*.psd",
+                    "*.fbx",
+                    "*.obj",
+                    "*.blend",
+                    "*.max",
+                    "*.ma",
+                    "*.anim",
+                    "*.controller",
+                    "*.mat",
+                    "*.spriteatlas",
+                    "*.ttf",
+                    "*.otf",
+                    "*.mp3",
+                    "*.wav",
+                    "*.ogg"
+                ],
+                "IncludePatterns": [
+                    "**TableTennisEngine**"
+                ]
+            }
+        }
+    ],
+    "SelectedProfileName": "Default",
+    "IgnoreSceneObjectNames": []
+}

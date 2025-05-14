@@ -6,6 +6,9 @@ output_dir=gather
 use_timestamp=no
 open_output=yes
 use_gitignore=yes
+first_run_completed=yes
+max_files_per_dir=100
+max_auto_file_size=1000000
 
 [exclude]
 .git
@@ -15,10 +18,18 @@ gather
 *.unity
 
 [skip]
+*Debug*
+*Launch*
 *.pdf
 *.mat
 *.prefab
+*SessionSettingsUI.cs
+*SessionStatisticsDisplay.cs
+*ShotController.cs
+*TableSetup.cs
+*Course*
+*Eye*
+*CountDown*
+*Playback*
 
 [include]
-# (拡張子未指定の場合、すべて含む想定)
-# .py

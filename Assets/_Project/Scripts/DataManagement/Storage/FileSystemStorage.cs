@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -69,8 +70,9 @@ namespace StepUpTableTennis.DataManagement.Storage
             var sessionInfo = await LoadJsonAsync<StoredSessionInfo>(sessionPath);
 
             var shots = new List<TrainingShot>();
-            var shotFiles = Directory.GetFiles(shotsDir, "*.json");
-            Array.Sort(shotFiles);
+            var shotFiles = Directory.GetFiles(shotsDir, "*.json")
+                .OrderBy(f => int.Parse(Path.GetFileNameWithoutExtension(f)))
+                .ToArray();
 
             foreach (var shotFile in shotFiles)
             {
@@ -118,7 +120,10 @@ namespace StepUpTableTennis.DataManagement.Storage
                 HeadMotionData = shot.HeadMotionData,
                 GazeData = shot.GazeData,
                 // 衝突データを追加
-                CollisionData = shot.CollisionData
+                CollisionData = shot.CollisionData,
+                // サッカード時のボール非表示関連データを追加
+                ShouldHideBallDuringSaccade = shot.ShouldHideBallDuringSaccade,
+                WasBallHiddenDuringSaccade = shot.WasBallHiddenDuringSaccade
             };
 
             await SaveJsonAsync(path, storedShot);
@@ -143,6 +148,10 @@ namespace StepUpTableTennis.DataManagement.Storage
             {
                 shot.CollisionData.AddRange(storedShot.CollisionData);
             }
+            
+            // サッカード時のボール非表示関連データのロード
+            shot.ShouldHideBallDuringSaccade = storedShot.ShouldHideBallDuringSaccade;
+            shot.WasBallHiddenDuringSaccade = storedShot.WasBallHiddenDuringSaccade;
 
             return shot;
         }
@@ -189,6 +198,9 @@ namespace StepUpTableTennis.DataManagement.Storage
             public List<GazeRecordData> GazeData { get; set; }
             // 衝突データを追加
             public List<CollisionRecordData> CollisionData { get; set; }
+            // サッカード時のボール非表示関連データを追加
+            public bool ShouldHideBallDuringSaccade { get; set; }
+            public bool WasBallHiddenDuringSaccade { get; set; }
         }
     }
 

@@ -6877,7 +6877,7 @@ MonoBehaviour:
   paddleCollisionCooldown: 0.1
   logCollisions: 1
   visualizeNormalizedPositions: 1
-  hideBallProbability: 1
+  hideBallProbability: 0.5
 --- !u!4 &358347850
 Transform:
   m_ObjectHideFlags: 0
@@ -6920,6 +6920,8 @@ MonoBehaviour:
   racketVisual: {fileID: 896612506}
   paddleSetup: {fileID: 2017439799}
   controllerType: 2
+  predictionTimeSeconds: 0.02
+  includeAcceleration: 1
   positionOffset: {x: 0.01, y: -0.07, z: -0.09}
   rotationOffset: {x: 358.9, y: 261.3, z: -58.4}
 --- !u!114 &358347853
@@ -26592,7 +26594,7 @@ AudioSource:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0
+      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -29398,7 +29400,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_FirstSelected: {fileID: 0}
   m_sendNavigationEvents: 1
-  m_DragThreshold: 10
+  m_DragThreshold: 60
 --- !u!4 &1592441193
 Transform:
   m_ObjectHideFlags: 0
@@ -30890,7 +30892,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7edf43593ab4ab587e612767c55075a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  saccadeStartVelocityThreshold: 50
+  saccadeStartVelocityThreshold: 100
   saccadeStartAccelThreshold: 1000
   saccadeEndVelocityThreshold: 50
   minimumSaccadeDuration: 0.02

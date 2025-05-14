@@ -190,7 +190,7 @@ namespace StepUpTableTennis.TableTennisEngine.Collisions.Handlers
             {
                 var spinAxis = Vector3.Cross(info.Normal, tangentVel.normalized).normalized;
                 var torque = spinAxis * torqueMag;
-                ball.AddTorque(torque);
+                ball.AddTorque(torque, StepUpTableTennis.TableTennisEngine.Objects.ForceMode.Impulse);
             }
         }
     }

@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Gravity: {x: 0, y: -9.81, z: 0}
   AirDensity: 1.204
-  TimeStep: 0.004166667
-  MaxSubsteps: 100
+  TimeStep: 0.001
+  MaxSubsteps: 400
   BallMass: 0.0027
   BallRadius: 0.02
   BallDragCoefficient: 0.47

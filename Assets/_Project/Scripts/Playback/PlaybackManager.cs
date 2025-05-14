@@ -131,7 +131,8 @@ namespace StepUpTableTennis.Playback
                         gazeData.LeftEyeClosedAmount,
                         gazeData.RightEyePosition,
                         gazeData.RightEyeDirection,
-                        gazeData.RightEyeClosedAmount
+                        gazeData.RightEyeClosedAmount,
+                        gazeData.AngularVelocity
                     );
                     visualizer.SetGazeSaccadeState(gazeData.IsSaccade);
                 }
@@ -230,7 +231,7 @@ namespace StepUpTableTennis.Playback
         }
 
         /// <summary>
-        /// GazeRecordData の線形補間（既存の実装）
+        /// GazeRecordData の線形補間
         /// </summary>
         private GazeRecordData InterpolateGazeData(IReadOnlyList<GazeRecordData> data, float targetTime)
         {
@@ -271,8 +272,12 @@ namespace StepUpTableTennis.Playback
             float leftEyeClosed = Mathf.Lerp(a.LeftEyeClosedAmount, b.LeftEyeClosedAmount, t);
             float rightEyeClosed = Mathf.Lerp(a.RightEyeClosedAmount, b.RightEyeClosedAmount, t);
             bool isSaccade = t < 0.5f ? a.IsSaccade : b.IsSaccade;
+            
+            // 角速度と角加速度の補間
+            float angularVelocity = Mathf.Lerp(a.AngularVelocity, b.AngularVelocity, t);
+            float angularAcceleration = Mathf.Lerp(a.AngularAcceleration, b.AngularAcceleration, t);
 
-            return new GazeRecordData(a.Timestamp, targetTime, leftEyeDir, rightEyeDir, leftEyePos, rightEyePos, leftEyeClosed, rightEyeClosed, isSaccade);
+            return new GazeRecordData(a.Timestamp, targetTime, leftEyeDir, rightEyeDir, leftEyePos, rightEyePos, leftEyeClosed, rightEyeClosed, isSaccade, angularVelocity, angularAcceleration);
         }
     }
 }

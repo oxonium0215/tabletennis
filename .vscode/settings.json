@@ -1,9 +1,10 @@
 {
-  "files.exclude": {
-    "**/.git": true,
-    "**/.svn": true,
-    "**/.hg": true,
-    "**/.DS_Store": true,
-    "**/*.meta": true
-  }
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/*.meta": true
+    },
+    "dotnet.defaultSolution": "StepUpTableTennis.sln"
 }

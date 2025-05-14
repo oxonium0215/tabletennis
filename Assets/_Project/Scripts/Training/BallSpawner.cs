@@ -1,89 +1,77 @@
 // BallSpawner.cs
+using System.Collections.Generic;
 using StepUpTableTennis.DataManagement.Recording;
 using StepUpTableTennis.TableTennisEngine.Core;
 using StepUpTableTennis.TableTennisEngine.Objects;
 using StepUpTableTennis.TableTennisEngine.Visualization;
 using UnityEngine;
-using System.Collections.Generic;
 
 namespace StepUpTableTennis.Training
 {
     public class BallSpawner : MonoBehaviour
     {
         [SerializeField] private GameObject ballVisualizerPrefab;
+
         private IMotionRecorder motionRecorder;
         private TableTennisPhysics physicsEngine;
 
-        // BallStateManager と Ball のペアを管理する Dictionary
-        private Dictionary<Ball, BallStateManager> ballMap = new Dictionary<Ball, BallStateManager>();
+        // Ball と BallStateManager のペア
+        private readonly Dictionary<Ball, BallStateManager> ballMap = new();
 
         public void Initialize(TableTennisPhysics engine, IMotionRecorder recorder)
         {
             physicsEngine = engine;
             motionRecorder = recorder;
-            Debug.Log($"BallSpawner initialized with recorder: {(recorder != null ? "yes" : "no")}");
+            Debug.Log($"BallSpawner initialized (recorder={(recorder != null ? "yes" : "no")})");
         }
 
         public Ball SpawnBall(Vector3 position, Vector3 velocity, Vector3 angularVelocity)
         {
-            // ボールの物理オブジェクトを作成
+            /* --------- 新規 Ball 生成 --------- */
             var ball = new Ball();
             ball.Initialize(physicsEngine.Settings);
 
-            // ビジュアライザーの生成と初期化
-            var visualizerObj = Instantiate(ballVisualizerPrefab, position, Quaternion.identity);
-            var stateManager = visualizerObj.GetComponent<BallStateManager>();
-            if (stateManager != null)
+            /* --------- 可視化 --------- */
+            var vizObj = Instantiate(ballVisualizerPrefab, position, Quaternion.identity);
+            var stateManager = vizObj.GetComponent<BallStateManager>();
+            if (stateManager == null)
             {
-                stateManager.Initialize(ball, position);
-                // 新しく生成したボールをモーションレコーダーに通知
-                motionRecorder?.TrackBall(stateManager);
-
-                // Ball と BallStateManager を Dictionary に追加
-                ballMap.Add(ball, stateManager);
-            }
-            else
-            {
-                Debug.LogError("BallStateManager component not found on ball visualizer prefab");
+                Debug.LogError("BallStateManager component not found on prefab");
+                Destroy(vizObj);
+                return null;
             }
 
-            // 物理エンジンにボールを登録
+            stateManager.Initialize(ball, position, physicsEngine);
+
+            // MotionRecorder へ通知
+            motionRecorder?.TrackBall(stateManager);
+
+            // 管理テーブルに追加
+            ballMap.Add(ball, stateManager);
+
+            /* --------- 物理エンジンへ登録 & 状態初期化 --------- */
             physicsEngine.AddBall(ball);
-
-            // 初期状態の設定（位置、速度、角速度）
             ball.ResetState(position, velocity, angularVelocity);
 
             return ball;
         }
 
-        // 特定のボールを破棄するメソッド
         public void DestroyBall(Ball ball)
         {
-            if (ballMap.ContainsKey(ball))
+            if (ballMap.TryGetValue(ball, out var sm))
             {
-                // BallStateManager を破棄
-                Destroy(ballMap[ball].gameObject);
-
-                // Dictionary から削除
+                Destroy(sm.gameObject);
                 ballMap.Remove(ball);
-
-                // TableTennisPhysics からも Ball を削除
-                physicsEngine?.RemoveBall(ball);
-
             }
+            physicsEngine?.RemoveBall(ball);
         }
 
-        // 既存の DestroyAllBalls() は残しておいても良いし、必要なければ削除しても良い
         public void DestroyAllBalls()
         {
-            foreach (var visualizer in FindObjectsOfType<BallStateManager>())
-            {
-                Destroy(visualizer.gameObject);
-            }
+            foreach (var sm in ballMap.Values)
+                if (sm) Destroy(sm.gameObject);
             ballMap.Clear();
-
-            // 物理エンジンからもすべてのボールを削除 (必要に応じて)
-            physicsEngine?.ClearBalls();  // このメソッドは TableTennisPhysics に追加する必要がある
+            physicsEngine?.ClearBalls();
         }
     }
 }

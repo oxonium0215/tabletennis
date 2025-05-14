@@ -23,7 +23,7 @@ namespace StepUpTableTennis.DataManagement.Recording
         private readonly Transform headTransform;
         private readonly OVREyeGaze eyeGaze;
         private readonly OVRFaceExpressions faceExpressions;
-        private readonly float recordingInterval = 1f / 60f; // 60Hz でサンプリング
+        private readonly float recordingInterval = 1f / 200f; // 60Hz でサンプリング
         private BallStateManager currentBallStateManager;
         private int currentShotIndex = -1;
         private float lastRecordTime;
@@ -160,6 +160,23 @@ namespace StepUpTableTennis.DataManagement.Recording
                 var leftWorldPose = leftPose.ToWorldSpacePose(Camera.main);
                 var rightWorldPose = rightPose.ToWorldSpacePose(Camera.main);
 
+                var leftGazeDir = leftWorldPose.orientation * Vector3.forward;
+                var rightGazeDir = rightWorldPose.orientation * Vector3.forward;
+                
+                // SaccadeDetectorを使って角速度とサッカード状態を取得
+                bool isSaccade = false;
+                float angularVelocity = 0f;
+                float angularAcceleration = 0f;
+                
+                if (saccadeDetector != null)
+                {
+                    // 左右の視線方向から更新
+                    isSaccade = saccadeDetector.UpdateFromEyeDirections(leftGazeDir, rightGazeDir);
+                    
+                    // 角速度と角加速度を取得
+                    saccadeDetector.GetGazeMetrics(out angularVelocity, out angularAcceleration);
+                }
+
                 float leftEyeClosed = 0f;
                 float rightEyeClosed = 0f;
 
@@ -174,8 +191,6 @@ namespace StepUpTableTennis.DataManagement.Recording
                         out float rightWeight) ? rightWeight : 0f;
                 }
 
-                bool isSaccade = saccadeDetector != null && saccadeDetector.IsSaccade;
-
                 gazeData = new GazeRecordData(
                     timestamp,
                     timeOffset,
@@ -185,7 +200,9 @@ namespace StepUpTableTennis.DataManagement.Recording
                     rightWorldPose.position,
                     leftEyeClosed,
                     rightEyeClosed,
-                    isSaccade
+                    isSaccade,
+                    angularVelocity,
+                    angularAcceleration
                 );
             }
 

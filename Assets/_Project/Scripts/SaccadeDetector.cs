@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+﻿﻿using UnityEngine;
 using System;
 using System.Collections.Generic;
 
@@ -14,6 +14,10 @@ public class SaccadeDetector : MonoBehaviour
     private float previousVelocity = 0f;
     private bool isSaccade = false;
     private float saccadeStartTime = 0f; // サッカード開始時刻を記録
+
+    // 角速度と角加速度を外部からアクセスできるようにするプロパティ
+    public float CurrentAngularVelocity { get; private set; } = 0f;
+    public float CurrentAngularAcceleration { get; private set; } = 0f;
 
     public event Action OnSaccadeStarted;
     public event Action OnSaccadeEnded;
@@ -37,6 +41,11 @@ public class SaccadeDetector : MonoBehaviour
 
         float angularVelocity = Vector3.Angle(previousGazeDirection, averageGazeDirection) / Time.deltaTime;
         float angularAcceleration = (angularVelocity - previousVelocity) / Time.deltaTime;
+        
+        // 現在の値を保存
+        CurrentAngularVelocity = angularVelocity;
+        CurrentAngularAcceleration = angularAcceleration;
+        
         bool previousSaccadeState = isSaccade;
 
         if (!isSaccade)
@@ -86,5 +95,31 @@ public class SaccadeDetector : MonoBehaviour
         saccadeStartVelocityThreshold = startVelocity;
         saccadeStartAccelThreshold = startAccel;
         saccadeEndVelocityThreshold = endVelocity;
+    }
+    
+    /// <summary>
+    /// 左右の目の視線方向から平均の視線方向を計算し、サッカード状態と角速度を更新します
+    /// </summary>
+    /// <param name="leftEyeDirection">左目の視線方向</param>
+    /// <param name="rightEyeDirection">右目の視線方向</param>
+    /// <returns>サッカード状態</returns>
+    public bool UpdateFromEyeDirections(Vector3 leftEyeDirection, Vector3 rightEyeDirection)
+    {
+        // 左右の視線方向の平均を計算（正規化）
+        Vector3 combinedGazeDirection = ((leftEyeDirection + rightEyeDirection) * 0.5f).normalized;
+        
+        // サッカード状態と角速度を更新
+        return UpdateSaccadeState(combinedGazeDirection);
+    }
+    
+    /// <summary>
+    /// 現在の角速度と角加速度を取得します
+    /// </summary>
+    /// <param name="angularVelocity">出力: 角速度 (度/秒)</param>
+    /// <param name="angularAcceleration">出力: 角加速度 (度/秒²)</param>
+    public void GetGazeMetrics(out float angularVelocity, out float angularAcceleration)
+    {
+        angularVelocity = CurrentAngularVelocity;
+        angularAcceleration = CurrentAngularAcceleration;
     }
 }

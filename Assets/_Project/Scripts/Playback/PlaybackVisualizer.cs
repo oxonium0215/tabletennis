@@ -73,13 +73,17 @@ namespace StepUpTableTennis.Playback
             }
         }
 
-        public void UpdateGazeVisualization(Vector3 leftEyePos, Vector3 leftEyeDir, float leftEyeClosed,
-                                             Vector3 rightEyePos, Vector3 rightEyeDir, float rightEyeClosed)
+        public void UpdateGazeVisualization(
+            Vector3 leftEyePos, Vector3 leftEyeDir, float leftEyeClosed,
+            Vector3 rightEyePos, Vector3 rightEyeDir, float rightEyeClosed,
+            float angularVelocity)
         {
             if (gazeVisualizer != null)
             {
-                gazeVisualizer.UpdateGazeData(leftEyePos, leftEyeDir, leftEyeClosed,
-                                                rightEyePos, rightEyeDir, rightEyeClosed);
+                gazeVisualizer.UpdateGazeVisualization(
+                    leftEyePos, leftEyeDir, leftEyeClosed,
+                    rightEyePos, rightEyeDir, rightEyeClosed,
+                    angularVelocity);
             }
         }
 
@@ -137,7 +141,7 @@ namespace StepUpTableTennis.Playback
         {
             if (gazeVisualizer != null)
             {
-                gazeVisualizer.SetSaccadeState(isSaccade);
+                gazeVisualizer.SetGazeSaccadeState(isSaccade);
             }
         }
     }

@@ -64,6 +64,13 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.toagihouse.unityllmgather": {
+      "version": "https://github.com/herring101/com.toagihouse.unityllmgather.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "41323bd987474a370ea89c2ac07d516b4e097425"
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.4",
       "depth": 0,

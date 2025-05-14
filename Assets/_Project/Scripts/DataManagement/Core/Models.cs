@@ -117,7 +117,9 @@ namespace StepUpTableTennis.DataManagement.Core.Models
             Vector3 rightEyePosition,
             float leftEyeClosedAmount,
             float rightEyeClosedAmount,
-            bool isSaccade) : base(timestamp, timeOffset)
+            bool isSaccade,
+            float angularVelocity,
+            float angularAcceleration) : base(timestamp, timeOffset)
         {
             LeftEyeDirection = leftEyeDirection;
             RightEyeDirection = rightEyeDirection;
@@ -126,6 +128,8 @@ namespace StepUpTableTennis.DataManagement.Core.Models
             LeftEyeClosedAmount = leftEyeClosedAmount;
             RightEyeClosedAmount = rightEyeClosedAmount;
             IsSaccade = isSaccade;
+            AngularVelocity = angularVelocity;
+            AngularAcceleration = angularAcceleration;
         }
 
         public Vector3 LeftEyeDirection { get; } // 左目の視線方向
@@ -135,6 +139,8 @@ namespace StepUpTableTennis.DataManagement.Core.Models
         public float LeftEyeClosedAmount { get; } // 左目の閉じている度合い (0: 完全に開いている, 1: 完全に閉じている)
         public float RightEyeClosedAmount { get; } // 右目の閉じている度合い (0: 完全に開いている, 1: 完全に閉じている)
         public bool IsSaccade { get; } // サッカード状態かどうか
+        public float AngularVelocity { get; } // 視線の角速度 (度/秒)
+        public float AngularAcceleration { get; } // 視線の角加速度 (度/秒²)
     }
 
     // ラケット衝突情報の記録データ
@@ -177,6 +183,11 @@ namespace StepUpTableTennis.DataManagement.Core.Models
         public List<GazeRecordData> GazeData { get; } = new();
         // 衝突記録を保存するリスト
         public List<CollisionRecordData> CollisionData { get; } = new();
+
+        // サッカード時のボール非表示に関する情報
+        public bool ShouldHideBallDuringSaccade { get; set; } = false; // ボールを隠すかの事前決定
+        public bool WasBallHiddenDuringSaccade { get; set; } = false;  // 実際に隠されたかどうか
+        
         public bool IsExecuted => ExecutedAt.HasValue;
 
         public void RecordExecution(DateTime executionTime, bool wasSuccessful)

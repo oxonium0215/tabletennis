@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 7175190784239012157}
   - component: {fileID: 6669714197667167480}
   - component: {fileID: 622330468372160013}
+  - component: {fileID: 201786888149554235}
   m_Layer: 0
   m_Name: table-tennis_ball40
   m_TagString: Untagged
@@ -224,3 +225,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   smoothMovement: 1
   smoothSpeed: 1000
+--- !u!114 &201786888149554235
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5606864329334493645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23679aae24af10444a195f81d004bc0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  framesAhead: 1
+  frameInterval: 0.1
+  ghostMaterial: {fileID: 2100000, guid: d4a0a87002c7efb47a7865c3d010e54d, type: 2}
+  predictionEnabled: 1

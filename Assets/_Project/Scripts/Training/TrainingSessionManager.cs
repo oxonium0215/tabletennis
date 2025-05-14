@@ -27,22 +27,6 @@ namespace StepUpTableTennis.Training
     {
     }
 
-    // 衝突情報を保存するクラスを追加
-    [Serializable]
-    public class CollisionRecordData
-    {
-        public CollisionRecordData(Vector3 position, float impactForce, DateTime timestamp)
-        {
-            Position = position;
-            ImpactForce = impactForce;
-            Timestamp = timestamp;
-        }
-
-        public Vector3 Position { get; }
-        public float ImpactForce { get; }
-        public DateTime Timestamp { get; }
-    }
-
     public class TrainingSessionManager : MonoBehaviour
     {
         #region Fields and Components
@@ -129,6 +113,11 @@ namespace StepUpTableTennis.Training
 
         // パドル位置の可視化用
         private List<(Vector2 normalizedPos, float time)> recentPaddleHits = new List<(Vector2, float)>();
+
+        // ボールを消す確率
+        [Header("Saccade Ball Hide Settings")]
+        [Range(0f, 1f)]
+        public float hideBallProbability = 0.5f;
 
         #endregion
 
@@ -342,27 +331,35 @@ namespace StepUpTableTennis.Training
 
         /// <summary>
         /// サッカード終了時のハンドラー。
-        /// eligibleForBallHide が true で、かつそのショットではまだ処理を行っていなければ、ボールを100ms非表示にする。
+        /// eligibleForBallHide が true で、かつそのショットではまだ処理を行っていなければ、
+        /// かつショットの事前決定で「隠す」となっていれば、ボールを100ms非表示にする。
         /// </summary>
         private void HandleSaccadeEnded()
         {
             if (!eligibleForBallHide || ballHiddenForCurrentShot)
                 return;
 
-            var ballStateManager = FindFirstObjectByType<BallStateManager>();
-            if (ballStateManager != null)
+            // 現在のショットを取得（実際には直前に発射されたショット）
+            TrainingShot currentShot = JustFiredShot;
+            
+            // ショットが存在し、かつそのショットで「隠す」と事前決定されていた場合のみ処理
+            if (currentShot != null && currentShot.ShouldHideBallDuringSaccade)
             {
-                currentBallRenderer = ballStateManager.gameObject.GetComponent<MeshRenderer>();
-                if (currentBallRenderer != null)
+                var ballStateManager = FindFirstObjectByType<BallStateManager>();
+                if (ballStateManager != null)
                 {
-                    ballHiddenForCurrentShot = true;
-                    StartCoroutine(HideBallTemporarily());
+                    currentBallRenderer = ballStateManager.gameObject.GetComponent<MeshRenderer>();
+                    if (currentBallRenderer != null)
+                    {
+                        ballHiddenForCurrentShot = true;
+                        currentShot.WasBallHiddenDuringSaccade = true; // 実際に隠したことを記録
+                        StartCoroutine(HideBallTemporarily());
+                        
+                        Debug.Log($"Hiding ball during saccade for shot {currentShotIndex-1}");
+                    }
                 }
             }
         }
-
-        // ボールを消す確率
-        public float hideBallProbability = 0.5f;
 
         /// <summary>
         /// ボールのレンダラーを無効化して100ms後に再度有効化するコルーチン。
@@ -372,10 +369,8 @@ namespace StepUpTableTennis.Training
             if (currentBallRenderer == null)
                 yield break;
 
-            if (hideBallProbability < UnityEngine.Random.value)
-                yield break;
             currentBallRenderer.enabled = false; // 非表示
-            yield return new WaitForSeconds(0.1f); // 100ms待機
+            yield return new WaitForSeconds(saccadeHideTime); // 設定された時間待機（デフォルト100ms）
             if (currentBallRenderer != null)
                 currentBallRenderer.enabled = true; // 表示に戻す
         }
@@ -591,6 +586,12 @@ namespace StepUpTableTennis.Training
             var shot = currentSession.Shots[currentShotIndex];
             var parameters = shot.Parameters;
 
+            // ボールを隠すかどうかを事前決定し記録
+            shot.ShouldHideBallDuringSaccade = UnityEngine.Random.value < hideBallProbability;
+            shot.WasBallHiddenDuringSaccade = false; // 初期状態はfalse
+            
+            Debug.Log($"Shot {currentShotIndex}: ShouldHideBall={shot.ShouldHideBallDuringSaccade}");
+
             if (!parameters.IsCalculated)
             {
                 Debug.LogError("Shot parameters have not been calculated");
@@ -743,10 +744,14 @@ namespace StepUpTableTennis.Training
 
                     // 衝突位置と力を記録
                     float impactForce = collisionInfo.GetImpactForce(physicsSettings);
+                    float timeOffset = Time.time - currentShotExecutionTime;
                     var collisionRecord = new CollisionRecordData(
+                        DateTime.Now,
+                        timeOffset,
                         collisionInfo.Point,
                         impactForce,
-                        DateTime.Now
+                        collisionInfo.Normal,
+                        normalizedPos
                     );
 
                     // ショットに紐づけて記録
@@ -758,7 +763,7 @@ namespace StepUpTableTennis.Training
                     shotCollisionRecords[shotIndex].Add(collisionRecord);
 
                     // TrainingShotの衝突データにも追加
-                    float timeOffset = Time.time - currentShotExecutionTime;
+                    timeOffset = Time.time - currentShotExecutionTime;
                     shot.AddCollisionRecord(
                         collisionInfo.Point, 
                         impactForce, 

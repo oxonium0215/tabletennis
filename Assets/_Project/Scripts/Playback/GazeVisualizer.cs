@@ -91,7 +91,7 @@ namespace StepUpTableTennis.Playback
         }
         
         /// <summary>
-        /// 視線データの更新を反映します。
+        /// 視線データの更新を反映します。角速度は記録のみで視覚化には使用しません。
         /// </summary>
         /// <param name="leftEyePos">左目の位置</param>
         /// <param name="leftEyeDir">左目の視線方向（正規化済み）</param>
@@ -99,8 +99,11 @@ namespace StepUpTableTennis.Playback
         /// <param name="rightEyePos">右目の位置</param>
         /// <param name="rightEyeDir">右目の視線方向（正規化済み）</param>
         /// <param name="rightEyeClosed">右目の閉じ具合（0＝完全に開、1＝完全に閉）</param>
-        public void UpdateGazeData(Vector3 leftEyePos, Vector3 leftEyeDir, float leftEyeClosed,
-                                   Vector3 rightEyePos, Vector3 rightEyeDir, float rightEyeClosed)
+        /// <param name="angularVelocity">視線の角速度 (度/秒)（記録用であり、視覚化には使いません）</param>
+        public void UpdateGazeVisualization(
+            Vector3 leftEyePos, Vector3 leftEyeDir, float leftEyeClosed,
+            Vector3 rightEyePos, Vector3 rightEyeDir, float rightEyeClosed,
+            float angularVelocity)
         {
             // 左目の更新
             if (leftEyeSphere != null)
@@ -145,7 +148,7 @@ namespace StepUpTableTennis.Playback
         /// サッカード状態を設定します。
         /// </summary>
         /// <param name="isSaccade">サッカード中なら true</param>
-        public void SetSaccadeState(bool isSaccade)
+        public void SetGazeSaccadeState(bool isSaccade)
         {
             currentSaccade = isSaccade;
         }
