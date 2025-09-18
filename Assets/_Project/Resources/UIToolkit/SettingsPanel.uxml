@@ -1,0 +1,78 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/_Project/Resources/UIToolkit/SettingsPanel.uss?fileID=7433441132597879392&amp;guid=4dcb81872dd04a144865881b517b5d12&amp;type=3#SettingsPanel" />
+    <ui:VisualElement enabled="true" name="Panel">
+        <ui:Button name="StartButton1" class="start-button" style="position: absolute; top: 50px; left: 45px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton2" class="start-button" style="position: absolute; top: 50px; left: 175px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton3" class="start-button" style="position: absolute; top: 50px; left: 305px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton4" class="start-button" style="position: absolute; top: 50px; left: 435px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton5" class="start-button" style="position: absolute; top: 50px; left: 565px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton6" class="start-button" style="position: absolute; top: 50px; left: 695px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton7" class="start-button" style="position: absolute; top: 50px; left: 825px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+
+        <ui:Button name="StartButton8" class="start-button" style="position: absolute; top: 160px; left: 175px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton9" class="start-button" style="position: absolute; top: 160px; left: 305px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton10" class="start-button" style="position: absolute; top: 160px; left: 435px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton11" class="start-button" style="position: absolute; top: 160px; left: 565px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton12" class="start-button" style="position: absolute; top: 160px; left: 695px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+
+        <ui:Button name="StartButton13" class="start-button" style="position: absolute; top: 270px; left: 175px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton14" class="start-button" style="position: absolute; top: 270px; left: 305px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton15" class="start-button" style="position: absolute; top: 270px; left: 435px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton16" class="start-button" style="position: absolute; top: 270px; left: 565px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        <ui:Button name="StartButton17" class="start-button" style="position: absolute; top: 270px; left: 695px;">
+            <ui:Label text="Start" name="Label" class="start-button-label" />
+            <ui:Label text="Click or Left X Button" name="Description" class="start-button-description" />
+        </ui:Button>
+        
+        <ui:SliderInt class="apple-style-slider" label="Shot" value="42" high-value="50" fill="true" low-value="1" style="top: 80%; align-items: stretch; justify-content: flex-start; -unity-font-definition: url(&quot;project://database/Assets/TextMesh%20Pro/Examples%20&amp;%20Extras/Fonts/Roboto-Bold.ttf?fileID=12800000&amp;guid=4beb055f07aaff244873dec698d0363e&amp;type=3#Roboto-Bold&quot;); color: rgb(255, 255, 255); font-size: 18px; margin-right: 45px; margin-left: 45px;" />
+        <ui:SliderInt class="apple-style-slider" label="Interval" value="15" high-value="30" fill="true" low-value="5" style="top: 80%; font-size: 18px; -unity-font-definition: url(&quot;project://database/Assets/TextMesh%20Pro/Examples%20&amp;%20Extras/Fonts/Roboto-Bold.ttf?fileID=12800000&amp;guid=4beb055f07aaff244873dec698d0363e&amp;type=3#Roboto-Bold&quot;); color: rgb(255, 255, 255); margin-left: 45px; margin-right: 45px;" />
+    </ui:VisualElement>
+</ui:UXML>

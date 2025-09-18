@@ -1,0 +1,83 @@
+﻿#Panel {
+    flex-grow: 1;
+    -unity-font-definition: initial;
+    -unity-font-style: normal;
+    -unity-background-scale-mode: stretch-to-fill;
+    background-color: rgba(0, 0, 0, 0.75);
+    border-top-width: 3px;
+    border-right-width: 3px;
+    border-bottom-width: 3px;
+    border-left-width: 3px;
+    border-left-color: rgba(77, 75, 72, 0.32);
+    border-right-color: rgba(77, 75, 72, 0.32);
+    border-top-color: rgba(77, 75, 72, 0.32);
+    border-bottom-color: rgba(77, 75, 72, 0.32);
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+}
+
+.start-button {
+    height: 80px;
+    width: 120px;
+    -unity-font-style: bold;
+    -unity-font-definition: url("project://database/Assets/TextMesh%20Pro/Examples%20&%20Extras/Fonts/Roboto-Bold.ttf?fileID=12800000&guid=4beb055f07aaff244873dec698d0363e&type=3#Roboto-Bold");
+    font-size: 14px;
+    -unity-text-align: middle-center;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+    border-bottom-left-radius: 15px;
+    background-color: rgba(188, 188, 188, 0.14);
+    border-left-color: rgba(149, 149, 149, 0.35);
+    border-right-color: rgba(149, 149, 149, 0.35);
+    border-top-color: rgba(149, 149, 149, 0.35);
+    border-bottom-color: rgba(149, 149, 149, 0.35);
+}
+
+.start-button:hover {
+    background-color: rgba(220, 220, 220, 0.4);
+    /* Make the button slightly larger */
+    scale: 1.05 1.05;
+}
+
+/* ADD THIS BLOCK for the active (click) state 👇 */
+.start-button:active {
+    background-color: rgba(160, 160, 160, 0.5);
+    /* Make the button slightly smaller to simulate a press */
+    scale: 0.98 0.98;
+}
+
+.start-button-label {
+    font-size: 16px;
+    width: auto;
+    height: auto;
+    top: 10%;
+    color: rgb(255, 255, 255);
+    -unity-font-definition: url("project://database/Assets/TextMesh%20Pro/Examples%20&%20Extras/Fonts/Roboto-Bold.ttf?fileID=12800000&guid=4beb055f07aaff244873dec698d0363e&type=3#Roboto-Bold");
+}
+
+.start-button-description {
+    font-size: 8.5px;
+    width: auto;
+    height: auto;
+    bottom: 10%;
+    color: rgb(255, 255, 255);
+    -unity-font-definition: url("project://database/Assets/TextMesh%20Pro/Examples%20&%20Extras/Fonts/Roboto-Bold.ttf?fileID=12800000&guid=4beb055f07aaff244873dec698d0363e&type=3#Roboto-Bold");
+}
+
+.unity-base-slider__dragger {
+    /* --- Size --- */
+    width: 25px;
+    height: 25px;
+
+    /* --- Shape --- */
+    /* 50% border-radius makes it a perfect circle */
+    border-radius: 50%; 
+    
+    /* --- Optional Styling --- */
+    background-color: rgb(70, 130, 180); /* Steel Blue */
+    border-width: 3px;
+    border-color: rgb(255, 255, 255);
+}
