@@ -17,8 +17,8 @@ namespace StepUpTableTennis.Training.UI
         [Header("Slider Settings")] 
         [SerializeField] private int minShots = 1;
         [SerializeField] private int maxShots = 50;
-        [SerializeField] private int minInterval = 5;
-        [SerializeField] private int maxInterval = 30;
+        [SerializeField] private float minInterval = 0.5f;
+        [SerializeField] private float maxInterval = 3.0f;
 
         // UI Elements
         private SliderInt shotsPerSessionSlider;
@@ -39,14 +39,14 @@ namespace StepUpTableTennis.Training.UI
             if (uiDocument == null)
             {
                 Debug.LogError("SettingsPanelController requires a UIDocument component");
+                enabled = false;
                 return;
             }
 
             sessionManager = FindObjectOfType<TrainingSessionManager>();
             if (sessionManager == null)
             {
-                Debug.LogError("TrainingSessionManager not found");
-                return;
+                Debug.LogWarning("TrainingSessionManager not found - SettingsPanelController will have limited functionality");
             }
 
             InitializeUI();
@@ -58,6 +58,12 @@ namespace StepUpTableTennis.Training.UI
             {
                 SetupUIElements();
                 RegisterEventCallbacks();
+                
+                // Ensure UI is initialized if session manager becomes available later
+                if (sessionManager != null)
+                {
+                    InitializeUI();
+                }
             }
         }
 
@@ -107,8 +113,9 @@ namespace StepUpTableTennis.Training.UI
 
             if (shotIntervalSlider != null)
             {
-                shotIntervalSlider.lowValue = minInterval;
-                shotIntervalSlider.highValue = maxInterval;
+                // Use integer scale: min=5 (0.5s) to max=30 (3.0s) 
+                shotIntervalSlider.lowValue = Mathf.RoundToInt(minInterval * 10);
+                shotIntervalSlider.highValue = Mathf.RoundToInt(maxInterval * 10);
                 // Convert float interval to int for slider (multiply by 10 for decimals)
                 shotIntervalSlider.value = Mathf.RoundToInt(sessionManager.shotInterval * 10);
             }
@@ -210,18 +217,22 @@ namespace StepUpTableTennis.Training.UI
             {
                 if (buttonIndex <= 7)
                 {
-                    // First row buttons: Set course level
-                    sessionManager.difficultySettings.CourseLevel = buttonIndex;
+                    // First row buttons: Set course level (max 5 per DifficultySettings)
+                    int courseLevel = Mathf.Min(buttonIndex, 5);
+                    sessionManager.difficultySettings.CourseLevel = courseLevel;
+                    sessionManager.difficultySettings.UpdateCourseTemplate();
                 }
                 else if (buttonIndex <= 12)
                 {
-                    // Second row buttons: Set speed level
-                    sessionManager.difficultySettings.SpeedLevel = buttonIndex - 7;
+                    // Second row buttons: Set speed level (max 7 per DifficultySettings)
+                    int speedLevel = Mathf.Min(buttonIndex - 7, 7);
+                    sessionManager.difficultySettings.SpeedLevel = speedLevel;
                 }
                 else
                 {
-                    // Third row buttons: Set spin level
-                    sessionManager.difficultySettings.SpinLevel = buttonIndex - 12;
+                    // Third row buttons: Set spin level (max 5 per DifficultySettings)
+                    int spinLevel = Mathf.Min(buttonIndex - 12, 5);
+                    sessionManager.difficultySettings.SpinLevel = spinLevel;
                 }
                 
                 Debug.Log($"Difficulty updated - Course: {sessionManager.difficultySettings.CourseLevel}, " +
@@ -289,6 +300,21 @@ namespace StepUpTableTennis.Training.UI
         /// </summary>
         public void RefreshUIFromSessionManager()
         {
+            if (sessionManager == null)
+            {
+                sessionManager = FindObjectOfType<TrainingSessionManager>();
+            }
+            
+            InitializeUI();
+        }
+
+        /// <summary>
+        /// Set the session manager reference externally
+        /// </summary>
+        /// <param name="manager">The TrainingSessionManager to use</param>
+        public void SetSessionManager(TrainingSessionManager manager)
+        {
+            sessionManager = manager;
             InitializeUI();
         }
 
